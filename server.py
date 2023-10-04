@@ -11,19 +11,22 @@ STORAGE = []
 
 @app.route('/api/v1/', methods=['GET'])
 def hello():
-    """
-    Get service status
-    """
+    """Get service status"""
     return Response('Hola, its working', status=200)
 
 
-@app.route('/api/v1/head', methods=['GET'])
+@app.route('/api/v1/head/', methods=['GET'])
 def get_head():
     try:
         head = STORAGE[-1]
     except IndexError:
         return Response("", status=204)
     return Response(head, status=200)
+
+
+@app.route('api/v1/head/', methods=['PUT'])
+def add_item():
+    """Stack another item"""
 
 
 app.run(debug=True)
