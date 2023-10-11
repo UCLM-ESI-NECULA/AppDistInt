@@ -1,0 +1,254 @@
+openapi: 3.0.0
+info:
+  title: Object Storage Service
+  version: 1.0.0
+  description: API for managing blobs or byte packages.
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+paths:
+  /v1/blobs:
+
+    post:
+      summary: Create a new blob
+      description: Create a new blob.
+      requestBody:
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        201:
+          description: Blob created successfully
+        400:
+          description: Bad request
+      security:
+        - bearerAuth: []
+      tags:
+        - blob
+
+  /v1/blobs/{id_blob}:
+    get:
+      summary: Retrieve a specific blob
+      description: Get information about a specific blob.
+      parameters:
+        - in: path
+          name: id_blob
+          required: true
+          schema:
+            type: string
+          description: ID of the blob to retrieve
+      responses:
+        200:
+          description: Blob information
+        404:
+          description: Blob not found
+      security:
+        - bearerAuth: []
+      tags:
+        - blob
+
+    put:
+      summary: Update a blob
+      description: Update the content of a blob.
+      parameters:
+        - in: path
+          name: id_blob
+          required: true
+          schema:
+            type: string
+          description: ID of the blob to update
+      requestBody:
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        200:
+          description: Blob updated successfully
+        400:
+          description: Bad request
+        404:
+          description: Blob not found
+      security:
+        - bearerAuth: []
+      tags:
+        - blob
+
+    delete:
+      summary: Delete a blob
+      description: Delete a specific blob.
+      parameters:
+        - in: path
+          name: id_blob
+          required: true
+          schema:
+            type: string
+          description: ID of the blob to delete
+      responses:
+        204:
+          description: Blob deleted successfully
+        404:
+          description: Blob not found
+      security:
+        - bearerAuth: []
+      tags:
+        - blob
+
+  /v1/blobs/{id_blob}/permissions:
+    post:
+      summary: Add permissions for a user to access a blob
+      description: Add permissions for a specific user to access a blob.
+      parameters:
+        - in: path
+          name: id_blob
+          required: true
+          schema:
+            type: string
+          description: ID of the blob to modify permissions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                  description: ID of the user to grant permission
+      responses:
+        200:
+          description: Permissions updated successfully
+        400:
+          description: Bad request
+        404:
+          description: Blob not found
+      security:
+        - bearerAuth: []
+      tags:
+        - blob
+
+    delete:
+      summary: Remove permissions for a user to access a blob
+      description: Remove permissions for a specific user to access a blob.
+      parameters:
+        - in: path
+          name: id_blob
+          required: true
+          schema:
+            type: string
+          description: ID of the blob to modify permissions
+        - in: query
+          name: user_id
+          required: true
+          schema:
+            type: string
+          description: ID of the user to revoke permission
+      responses:
+        204:
+          description: Permissions removed successfully
+        404:
+          description: Blob not found
+      security:
+        - bearerAuth: []
+      tags:
+        - blob
+
+  /v1/blobs/{id_blob}/hash:
+    get:
+      summary: Retrieve hash of a blob
+      description: Retrieve hash (e.g., MD5, SHA256) of a specific blob.
+      parameters:
+        - in: path
+          name: id_blob
+          required: true
+          schema:
+            type: string
+          description: ID of the blob to retrieve the hash
+      responses:
+        200:
+          description: Blob hash
+        404:
+          description: Blob not found
+      security:
+        - bearerAuth: []
+      tags:
+        - blob
+
+  /v1/users:
+    get:
+      summary: Retrieve a list of users
+      description: Get a list of all users.
+      responses:
+        200:
+          description: List of users
+      security:
+        - bearerAuth: []
+      tags:
+        - user
+
+  /v1/users/{id_user}:
+    get:
+      summary: Retrieve user information
+      description: Get information about a specific user.
+      parameters:
+        - in: path
+          name: id_user
+          required: true
+          schema:
+            type: string
+          description: ID of the user to retrieve
+      responses:
+        200:
+          description: User information
+        404:
+          description: User not found
+      security:
+        - bearerAuth: []
+      tags:
+        - user
+
+  /v1/user:
+    post:
+      summary: Create a new user
+      description: Create a new user.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        201:
+          description: User created successfully
+        400:
+          description: Bad request
+      security:
+        - bearerAuth: []
+      tags:
+        - user
+
+  /v1/login:
+    post:
+      summary: User login
+      description: Log in as a user.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        200:
+          description: Login successful
+        401:
+          description: Unauthorized
+      tags:
+        - user
