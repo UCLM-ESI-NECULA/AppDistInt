@@ -2,16 +2,19 @@
 
 from flask import Flask, request
 from flask.wrappers import Response
+import argparse
+import os
+import requests
+import sys
 
 app = Flask(__name__)
 
 STORAGE = []
 
-
 @app.route('/api/v1/', methods=['GET'])
 def hello():
     """Get service status"""
-    return Response('Hola, its working', status=200)
+    return Response('Hi, its working', status=200)
 
 
 @app.route('/api/v1/head/', methods=['GET'])
