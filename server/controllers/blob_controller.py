@@ -1,17 +1,29 @@
-from flask import Blueprint, request
+from flask_restx import Api, Resource, fields, Namespace
+from server.models.blob import blob_model
 
-blueprint = Blueprint('api', __name__, url_prefix='/basic_api')
+authorizations = {
+    "jsonWebToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "AuthToken"
+    }
+}
 
-@blueprint.route('/entities', methods=['GET', 'POST'])
-def entities():
-    if request.method == "GET":
-        return {
-            'message': 'This endpoint should return a list of entities',
-            'method': request.method
-        }
-    if request.method == "POST":
-        return {
-            'message': 'This endpoint should create an entity',
-            'method': request.method,
-            'body': request.json
-        }
+blobNamespace = Namespace('blob', 'Endpoints for managing blobs', authorizations=authorizations)
+
+
+@blobNamespace.route('{blobId}')
+class Blob(Resource):
+    @blobNamespace.doc('list_todos')
+    @blobNamespace.response(500, 'Internal Server error')
+    @blobNamespace.response(200, 'Success')
+    @blobNamespace.response(401, 'Unauthorized')
+    @blobNamespace.response(403, 'Forbidden')
+    @blobNamespace.response(404, 'Not found')
+    @blobNamespace.doc(security='jsonWebToken')
+    @blobNamespace.marshal_with(blob_model)
+
+    def get(self):
+        """Get a blob"""
+
+        return "hello_world_example"
