@@ -6,7 +6,7 @@ import os
 import sys
 
 from flask import Flask, make_response, request
-from flask_restx import Api, Resource, fields, reqparse, inputs
+from flask_restx import Api, Resource, fields, reqparse
 from werkzeug.datastructures.file_storage import FileStorage
 
 from werkzeug.exceptions import Conflict, NotFound

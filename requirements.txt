@@ -1,4 +1,4 @@
-Requests==2.31.0
-
 flask~=2.3.3
+flask_restx==1.2.0
+Requests==2.31.0
 werkzeug~=2.3.7
