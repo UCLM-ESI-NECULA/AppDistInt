@@ -7,7 +7,7 @@ from pathlib import Path
 
 from blobapi import DEFAULT_ENCODING
 from blobapi.blob_service import BlobDB
-from blobapi.errors import ObjectAlreadyExists, ObjectNotFound
+from blobapi.errors import ObjectNotFound
 
 ADMIN_TOKEN = 'test_admin_token'
 WRONG_TOKEN = 'this_token_should_not_exists'
@@ -22,7 +22,7 @@ WRONG_HASH1 = 'test_blob1_hash_but_wrong'
 class TestPersistentDB(unittest.TestCase):
 
     def test_creation(self):
-        '''Test initialization'''
+        """Test initialization"""
         with tempfile.TemporaryDirectory() as workspace:
             dbfile = Path(workspace).joinpath('dbfile.json')
             self.assertFalse(os.path.exists(dbfile))
@@ -33,7 +33,7 @@ class TestPersistentDB(unittest.TestCase):
             self.assertEqual(content, "{}")
 
     def test_remove_not_exists_blob(self):
-        '''Test remove not-exists blob'''
+        """Test remove not-exists blob"""
         with tempfile.TemporaryDirectory() as workspace:
             dbfile = Path(workspace).joinpath('dbfile.json')
             blobdb = BlobDB(db_file=dbfile)
