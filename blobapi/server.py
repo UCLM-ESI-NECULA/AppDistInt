@@ -2,22 +2,25 @@
 
 import argparse
 import logging
+import os
 import sys
 
-from flask import Flask, make_response
-from flask_restx import Api, Resource, fields
+from flask import Flask, make_response, request
+from flask_restx import Api, Resource, fields, reqparse, inputs
+from werkzeug.datastructures.file_storage import FileStorage
+
+from werkzeug.exceptions import Conflict
 
 from blobapi import DEFAULT_STORAGE, DEFAULT_BLOB_DB, DEFAULT_ADDRESS, DEFAULT_PORT, HTTPS_DEBUG_MODE
 from blobapi.blob_service import BlobDB
+from blobapi.errors import ObjectAlreadyExists
 
 
 def routeApp(app, BLOBDB):
     '''Enruta la API REST a la webapp'''
 
-    @app.route('/v1/status', methods=['GET'])
-    def do_status():
-        '''Retorna el estado del servicio'''
-        return make_response('Service running', 200)
+
+
 
     authorizations = {
         "jsonWebToken": {
@@ -30,8 +33,18 @@ def routeApp(app, BLOBDB):
     api = Api(app, version='1.0.1', title='Object Storage Service',
               description='API for managing blobs or byte packages.', authorizations=authorizations)
 
-    # Models for serialization
+    # Namespaces
+    status_blob = api.namespace('api/v1/status', description='Status of the service')
+    ns_blob = api.namespace('api/v1/blob', description='Blob operations')
 
+    file_upload_parser = reqparse.RequestParser()
+    file_upload_parser.add_argument('file',
+                                    type=FileStorage,
+                                    location='files',
+                                    required=True,
+                                    help='Upload the blob file')
+
+    # Models for serialization
     blob_model = api.model('Blob', {
         'blobId': fields.String(required=True, description='Blob ID'),
         'URL': fields.String(required=True, description='Blob URL')
@@ -51,16 +64,42 @@ def routeApp(app, BLOBDB):
         'allowed_users': fields.List(fields.String, description='Allowed Users')
     })
 
-    # Resources
-    ns_blob = api.namespace('api/v1/blob', description='Blob operations')
+    # Status endpoints
+    @status_blob.route('/')
+    class StatusCollection(Resource):
+        @api.doc('get status of the service')
+        def get(self):
+            return make_response('Service running', 200)
 
+    # Blob endpoints
     @ns_blob.route('/')
     class BlobCollection(Resource):
         @api.doc('create_blob')
-        @api.expect(blob_model)
+        @api.expect(file_upload_parser)
         @api.marshal_with(blob_model, code=201)
+        @api.response(409, 'Conflict')
+        @api.response(401, 'Unauthorized')
+        @api.header('AuthToken', 'The authorization token', required=True)
         def post(self):
-            return {'blobId': 'example_blob_id', 'URL': 'http://example.com/blob/example_blob_id'}, 201
+            # Authorization check
+            #auth_token = request.headers.get('AuthToken')
+            #if not auth_token or auth_token != "EXPECTED_TOKEN_VALUE":  # Replace with actual token value or verification mechanism
+            #    return make_response('Invalid or missing AuthToken', 401)
+
+            # Check if the post request has the file part
+            if 'file' not in request.files:
+                return make_response('No file', 400)
+
+            file = request.files['file']
+            # Check if the user did not select a file
+            if file.filename == '':
+                return make_response('No selected file', 400)
+            try:
+                blob_id, url = BLOBDB.newBlob(file)
+            except ObjectAlreadyExists as e:
+                raise Conflict(description=str(e))
+
+            return {'blobId': blob_id, 'URL': url}, 201
 
     @ns_blob.route('/<string:blobId>')
     @api.doc(params={'blobId': 'A Blob ID'})
@@ -142,10 +181,6 @@ class ApiService:
         '''Start HTTP blobapi'''
         self._app_.run(host=self._host_, port=self._port_, debug=HTTPS_DEBUG_MODE)
 
-    def stop(self):
-        '''Cancel all remaining timers'''
-        self._tokenman_.stop()
-
 
 def parse_commandline():
     """Parse command line"""
@@ -184,7 +219,6 @@ def main():
         logging.error('Cannot start API: %s', error)
         sys.exit(1)
 
-    service.stop()
     sys.exit(0)
 
 

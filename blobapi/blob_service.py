@@ -6,9 +6,14 @@
 
 import json
 import logging
+import os
+import uuid
 from pathlib import Path
 
-from blobapi import DEFAULT_ENCODING
+from flask import jsonify
+from werkzeug.utils import secure_filename
+
+from blobapi import DEFAULT_ENCODING, DEFAULT_STORAGE
 from blobapi.errors import ObjectAlreadyExists, ObjectNotFound
 
 _WRN = logging.warning
@@ -42,16 +47,39 @@ class BlobDB:
         with open(self._db_file_, 'w', encoding=DEFAULT_ENCODING) as contents:
             json.dump(self._blobs_, contents, indent=2, sort_keys=True)
 
-    def newBlob(self, url):
+    def newBlob(self, file):
+        # Save the file and generate blob metadata
+        if not file:
+            raise ValueError("File not provided")
+
+        filename = secure_filename(file.filename)
+        url = os.path.join(DEFAULT_STORAGE, filename)
+        blob_id = str(uuid.uuid4())
+
         """Add new blob to DB"""
-        if (url in self._blobs_):
-            raise ObjectAlreadyExists(f'Blob "{url}"')
-        self._blobs_[url] = url
+        if url in [blob["URL"] for blob in self._blobs_.values()]:
+            raise ObjectAlreadyExists(f'Blob "{url}" already exists')
+        if blob_id in self._blobs_:
+            raise ObjectAlreadyExists(f'Blob with id:  "{blob_id}" already exists')
+
+        # Save the file
+        file.save(url)
+
+        # Save blob info to the database
+        self._blobs_[blob_id] = {"URL": url}
         self._commit_()
 
-    def removeBlob(self, url):
-        """Remove blob from DB"""
-        if url not in self._blobs_:
-            raise ObjectNotFound(f'Blob "{url}"')
-        del self._blobs_[url]
+        return blob_id, url
+
+    def getBlob(self, blob_id):
+        """Retrieve blob data by its ID"""
+        if blob_id not in self._blobs_:
+            raise ObjectNotFound(f'Blob ID "{blob_id}" not found')
+        return self._blobs_[blob_id]
+
+    def removeBlob(self, blob_id):
+        """Remove blob from DB using its ID"""
+        if blob_id not in self._blobs_:
+            raise ObjectNotFound(f'Blob with id: "{blob_id}" not found')
+        del self._blobs_[blob_id]
         self._commit_()
