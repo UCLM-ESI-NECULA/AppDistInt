@@ -9,11 +9,11 @@ from flask import Flask, make_response, request
 from flask_restx import Api, Resource, fields, reqparse, inputs
 from werkzeug.datastructures.file_storage import FileStorage
 
-from werkzeug.exceptions import Conflict
+from werkzeug.exceptions import Conflict, NotFound
 
 from blobapi import DEFAULT_STORAGE, DEFAULT_BLOB_DB, DEFAULT_ADDRESS, DEFAULT_PORT, HTTPS_DEBUG_MODE
 from blobapi.blob_service import BlobDB
-from blobapi.errors import ObjectAlreadyExists
+from blobapi.errors import ObjectAlreadyExists, ObjectNotFound
 
 
 def routeApp(app, BLOBDB):
@@ -32,6 +32,7 @@ def routeApp(app, BLOBDB):
 
     api = Api(app, version='1.0.1', title='Object Storage Service',
               description='API for managing blobs or byte packages.', authorizations=authorizations)
+
 
     # Namespaces
     status_blob = api.namespace('api/v1/status', description='Status of the service')
@@ -105,12 +106,22 @@ def routeApp(app, BLOBDB):
     @api.doc(params={'blobId': 'A Blob ID'})
     class BlobItem(Resource):
         @api.doc('get_blob')
+        @api.response(404, 'Not Found')
         def get(self, blobId):
-            return "Retrieve specific blob"
+            try:
+                return BLOBDB.getBlob(blobId)
+            except ObjectNotFound as e:
+                return make_response(e, 404)
 
         @api.doc('delete_blob')
+        @api.response(204, 'Deleted')
+        @api.response(404, 'Not Found')
         def delete(self, blobId):
-            return "", 204
+            try:
+                BLOBDB.removeBlob(blobId)
+                return '', 204
+            except ObjectNotFound as e:
+                return make_response(e, 404)
 
         @api.doc('update_blob')
         def put(self, blobId):
@@ -168,7 +179,7 @@ class ApiService:
         self._port_ = port
 
         self._app_ = Flask(__name__.split('.', maxsplit=1)[0])
-
+        self._app_.config['ERROR_404_HELP'] = False
         routeApp(self._app_, self._blobdb_)
 
     @property

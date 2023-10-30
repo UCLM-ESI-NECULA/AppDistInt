@@ -10,7 +10,7 @@ import os
 import uuid
 from pathlib import Path
 
-from flask import jsonify
+from flask import send_file
 from werkzeug.utils import secure_filename
 
 from blobapi import DEFAULT_ENCODING, DEFAULT_STORAGE
@@ -30,6 +30,7 @@ class BlobDB:
     """
         Repository for the blobs
     """
+
     def __init__(self, db_file):
         if not Path(db_file).exists():
             _initialize_(db_file)
@@ -72,14 +73,17 @@ class BlobDB:
         return blob_id, url
 
     def getBlob(self, blob_id):
-        """Retrieve blob data by its ID"""
+        """Retrieve blob by ID"""
         if blob_id not in self._blobs_:
-            raise ObjectNotFound(f'Blob ID "{blob_id}" not found')
-        return self._blobs_[blob_id]
+            raise ObjectNotFound(blob_id)
+        blob_data = self._blobs_[blob_id]
+        return send_file(blob_data["URL"], as_attachment=True)
 
     def removeBlob(self, blob_id):
-        """Remove blob from DB using its ID"""
+        """Remove blob from DB and filesystem using its ID"""
         if blob_id not in self._blobs_:
-            raise ObjectNotFound(f'Blob with id: "{blob_id}" not found')
+            raise ObjectNotFound(blob_id)
+        blob_data = self._blobs_[blob_id]
+        os.remove(blob_data["URL"])
         del self._blobs_[blob_id]
         self._commit_()
