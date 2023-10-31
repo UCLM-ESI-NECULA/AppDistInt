@@ -14,7 +14,7 @@ from flask import send_file
 from werkzeug.utils import secure_filename
 
 from blobapi import DEFAULT_ENCODING, DEFAULT_STORAGE
-from blobapi.errors import ObjectAlreadyExists, ObjectNotFound
+from blobapi.errors import ObjectAlreadyExists, ObjectNotFound, Unauthorized
 
 _WRN = logging.warning
 
@@ -77,14 +77,20 @@ class BlobDB:
 
         return blob_id, url
 
-    def getBlob(self, blob_id):
+    def getBlob(self, blob_id, user=None):
         """Retrieve blob by ID"""
         blob_data = self._exists_(blob_id)
-        return send_file(blob_data["URL"], as_attachment=True)
+        if blob_data["public"] or (user in blob_data["users"]):
+            return send_file(blob_data["URL"], as_attachment=True)
+        else:
+            raise Unauthorized(user=user, reason="User has no permissions to access this blob")
 
-    def removeBlob(self, blob_id):
+    def removeBlob(self, blob_id, user):
         """Remove blob from DB and filesystem using its ID"""
         blob_data = self._exists_(blob_id)
+        if user not in blob_data["users"]:
+            raise Unauthorized(user=user, reason="User has no permissions to remove this blob")
+
         os.remove(blob_data["URL"])
         del self._blobs_[blob_id]
         self._commit_()

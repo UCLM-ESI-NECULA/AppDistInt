@@ -13,9 +13,8 @@ from werkzeug.exceptions import Conflict
 
 from blobapi import DEFAULT_STORAGE, DEFAULT_BLOB_DB, DEFAULT_ADDRESS, DEFAULT_PORT, HTTPS_DEBUG_MODE, ADMIN_TOKEN
 from blobapi.blob_service import BlobDB
-from blobapi.errors import ObjectAlreadyExists, ObjectNotFound
+from blobapi.errors import ObjectAlreadyExists, ObjectNotFound, Unauthorized
 
-# valentin a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3
 
 def routeApp(app, client: Client, BLOBDB):
     """Route API REST to web"""
@@ -90,8 +89,6 @@ def routeApp(app, client: Client, BLOBDB):
         @api.header('AuthToken', 'The authorization token', required=True)
         @api.doc(security='AuthToken')
         def post(self):
-            # Authorization check
-            owner = get_client_token()
 
             # Check if the post request has the file part
             if 'file' not in request.files:
@@ -102,7 +99,7 @@ def routeApp(app, client: Client, BLOBDB):
             if file.filename == '':
                 return make_response('No selected file', 400)
             try:
-                blob_id, url = BLOBDB.newBlob(file, owner)
+                blob_id, url = BLOBDB.newBlob(file, get_client_token())
             except ObjectAlreadyExists as e:
                 raise Conflict(description=str(e))
 
@@ -110,24 +107,34 @@ def routeApp(app, client: Client, BLOBDB):
 
     @ns_blob.route('/<string:blobId>')
     @api.doc(params={'blobId': 'A Blob ID'})
+    @api.header('AuthToken', 'The authorization token', required=False)
+    @api.doc(security='AuthToken')
     class BlobItem(Resource):
         @api.doc('get_blob')
         @api.response(404, 'Not Found')
         def get(self, blobId):
+            auth_token = request.headers.get('AuthToken')
             try:
-                return BLOBDB.getBlob(blobId)
+                if not auth_token:
+                    return BLOBDB.getBlob(blobId)
+                else:
+                    return BLOBDB.getBlob(blobId, get_client_token())
             except ObjectNotFound as e:
                 return make_response(e, 404)
 
         @api.doc('delete_blob')
         @api.response(204, 'Deleted')
         @api.response(404, 'Not Found')
+        @api.header('AuthToken', 'The authorization token', required=True)
+        @api.doc(security='AuthToken')
         def delete(self, blobId):
             try:
-                BLOBDB.removeBlob(blobId)
+                BLOBDB.removeBlob(blobId, get_client_token())
                 return '', 204
             except ObjectNotFound as e:
                 return make_response(e, 404)
+            except Unauthorized as e:
+                return make_response(e, 401)
 
         @api.doc('update_blob')
         @api.response(204, 'Updated')
@@ -135,9 +142,12 @@ def routeApp(app, client: Client, BLOBDB):
         @api.marshal_with(blob_model, code=204)
         @api.response(409, 'Conflict')
         @api.response(401, 'Unauthorized')
-        def delete(self, blobId):
+        @api.header('AuthToken', 'The authorization token', required=True)
+        @api.doc(security='AuthToken')
+        def put(self, blobId):
+
             try:
-                BLOBDB.updateBlob(blobId)
+                BLOBDB.updateBlob(blobId, get_client_token())
                 return '', 204
             except ObjectNotFound as e:
                 return make_response(e, 404)
@@ -319,8 +329,8 @@ def main():
 
     client = Client("http://localhost:3001", check_service=True)
     service = ApiService(user_options.db_file, client, user_options.address, user_options.port)
-    #client.login("valentin", "123")
-    #print(client._get_token_("valentin", "123"))
+    # client.login("valentin", "123") TODO remove
+    # print(client._get_token_("valentin", "123")) TODO remove
     try:
         print(f'Starting service on: {service.base_uri}')
         service.start()
