@@ -26,6 +26,16 @@ def _initialize_(db_file):
         json.dump({}, contents)
 
 
+def raise_user_no_permission(blob_data, user):
+    if user not in blob_data["users"]:
+        raise Unauthorized(user=user, reason="User has no permissions to remove this blob")
+
+
+def raise_optional_token(blob_data, user):
+    if user not in blob_data["users"] and not blob_data["public"]:
+        raise Unauthorized(user=user, reason="User has no permissions to access this blob")
+
+
 class BlobDB:
     """
         Repository for the blobs
@@ -80,22 +90,20 @@ class BlobDB:
     def getBlob(self, blob_id, user=None):
         """Retrieve blob by ID"""
         blob_data = self._exists_(blob_id)
-        if blob_data["public"] or (user in blob_data["users"]):
-            return send_file(blob_data["URL"], as_attachment=True)
-        else:
-            raise Unauthorized(user=user, reason="User has no permissions to access this blob")
+
+        raise_optional_token(blob_data, user)
+        return send_file(blob_data["URL"], as_attachment=True)
 
     def removeBlob(self, blob_id, user):
         """Remove blob from DB and filesystem using its ID"""
         blob_data = self._exists_(blob_id)
-        if user not in blob_data["users"]:
-            raise Unauthorized(user=user, reason="User has no permissions to remove this blob")
+        raise_user_no_permission(blob_data, user)
 
         os.remove(blob_data["URL"])
         del self._blobs_[blob_id]
         self._commit_()
 
-    def updateBlob(self, blob_id, new_file):
+    def updateBlob(self, blob_id, new_file, user):
         """Update blob with a new file"""
         self._exists_(blob_id)
 
@@ -106,6 +114,7 @@ class BlobDB:
         if url in [blob["URL"] for blob in self._blobs_.values()] and self._blobs_[blob_id]["URL"] != url:
             raise ObjectAlreadyExists(f'Blob "{url}" already exists')
 
+        raise_user_no_permission(self._blobs_[blob_id], user)
         # Remove the old file
         os.remove(self._blobs_[blob_id]["URL"])
 
@@ -116,11 +125,14 @@ class BlobDB:
         self._blobs_[blob_id] = {"URL": url}
         self._commit_()
 
-    def getBlobHash(self, blob_id):
+    def getBlobHash(self, blob_id, user):
         """Compute hashes for the blob based on multiple hash types."""
 
         # Check if blob exists
         blob_data = self._exists_(blob_id)
+
+        raise_optional_token(blob_data, user)
+
         blob_path = blob_data["URL"]
 
         hash_types = ['md5', 'sha1', 'sha256', 'sha512']
@@ -132,7 +144,7 @@ class BlobDB:
             for hash_type in hash_types:
                 hash_func = getattr(hashlib, hash_type)
                 blob_hash = hash_func(file_data).hexdigest()
-                hashes.append({"hash_type": hash_type,"hexdigest": blob_hash})
+                hashes.append({"hash_type": hash_type, "hexdigest": blob_hash})
 
         return hashes
 

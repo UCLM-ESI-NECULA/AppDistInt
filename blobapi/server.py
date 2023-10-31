@@ -145,22 +145,39 @@ def routeApp(app, client: Client, BLOBDB):
         @api.header('AuthToken', 'The authorization token', required=True)
         @api.doc(security='AuthToken')
         def put(self, blobId):
+            # Check if the post request has the file part
+            if 'file' not in request.files:
+                return make_response('No file', 400)
 
+            file = request.files['file']
+            # Check if the user did not select a file
+            if file.filename == '':
+                return make_response('No selected file', 400)
             try:
-                BLOBDB.updateBlob(blobId, get_client_token())
-                return '', 204
+                BLOBDB.updateBlob(blobId, file, get_client_token())
+            except ObjectAlreadyExists as e:
+                raise make_response(e, 409)
+            except Unauthorized as e:
+                return make_response(e, 401)
             except ObjectNotFound as e:
                 return make_response(e, 404)
+            return '', 204
 
     @ns_blob.route('/<string:blobId>/hash')
     @api.doc(params={'blobId': 'A Blob ID'})
+    @api.header('AuthToken', 'The authorization token', required=False)
+    @api.doc(security='AuthToken')
     class BlobHash(Resource):
         @api.doc('get_blob_hash')
         @api.marshal_with(hash_model)
         def get(self, blobId):
             """Get blob hash"""
+            auth_token = request.headers.get('AuthToken')
             try:
-                return {'hashes': BLOBDB.getBlobHash(blobId)}
+                if not auth_token:
+                    return {'hashes': BLOBDB.getBlobHash(blobId)}
+                else:
+                    return {'hashes': BLOBDB.getBlobHash(blobId, get_client_token())}
             except ObjectNotFound as e:
                 return make_response(e, 404)
 
