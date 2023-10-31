@@ -17,10 +17,7 @@ from blobapi.errors import ObjectAlreadyExists, ObjectNotFound
 
 
 def routeApp(app, BLOBDB):
-    '''Enruta la API REST a la webapp'''
-
-
-
+    """Route API REST to web"""
 
     authorizations = {
         "jsonWebToken": {
@@ -32,7 +29,6 @@ def routeApp(app, BLOBDB):
 
     api = Api(app, version='1.0.1', title='Object Storage Service',
               description='API for managing blobs or byte packages.', authorizations=authorizations)
-
 
     # Namespaces
     status_blob = api.namespace('api/v1/status', description='Status of the service')
@@ -52,9 +48,11 @@ def routeApp(app, BLOBDB):
     })
 
     # Define the model for the response
-    hash_model = api.model('Hash', {
-        'hash_type': fields.String(required=True, description='Hash Type (e.g., md5, sha256)'),
-        'hexdigest': fields.String(required=True, description='The computed hash for the blob')
+    hash_model = api.model('HashList', {
+        'hashes': fields.List(fields.Nested(api.model('Hash', {
+            'hash_type': fields.String(required=True, description='Hash Type (e.g., md5, sha256)'),
+            'hexdigest': fields.String(required=True, description='The computed hash for the blob')
+        })))
     })
 
     visibility_model = api.model('Visibility', {
@@ -84,8 +82,8 @@ def routeApp(app, BLOBDB):
         @api.header('AuthToken', 'The authorization token', required=True)
         def post(self):
             # Authorization check
-            #auth_token = request.headers.get('AuthToken')
-            #if not auth_token or auth_token != "EXPECTED_TOKEN_VALUE":  # Replace with actual token value or verification mechanism
+            # auth_token = request.headers.get('AuthToken')
+            # if not auth_token or auth_token != "EXPECTED_TOKEN_VALUE":  # Replace with actual token value or verification mechanism
             #    return make_response('Invalid or missing AuthToken', 401)
 
             # Check if the post request has the file part
@@ -145,7 +143,7 @@ def routeApp(app, BLOBDB):
         def get(self, blobId):
             """Get blob hash"""
             try:
-                return BLOBDB.getBlobHash(blobId)
+                return {'hashes': BLOBDB.getBlobHash(blobId)}
             except ObjectNotFound as e:
                 return make_response(e, 404)
 
@@ -175,6 +173,33 @@ def routeApp(app, BLOBDB):
         def get(self, blobId):
             return {'user': 'user1', 'allowed_users': ['user2', 'user3']}
 
+    @ns_blob.route('/<string:blobId>/visibility')
+    @api.doc(params={'blobId': 'A Blob ID'})
+    class BlobVisibility(Resource):
+        parser = reqparse.RequestParser()
+        parser.add_argument('public', type=bool, required=True, help='Set visibility to public or private')
+
+        @api.doc('set_blob_visibility')
+        @api.response(204, 'Visibility Updated')
+        @api.response(401, 'Unauthorized')
+        @api.response(404, 'Blob Not Found')
+        @api.response(400, 'Bad Request')
+        @api.expect(visibility_model, validate=True)
+        def put(self, blobId):
+            """Set the visibility of a blob."""
+            args = self.parser.parse_args()
+            try:
+                BLOBDB.setVisibility(blobId, args['public'])
+                return '', 204
+            except ObjectNotFound as e:
+                return make_response(e, 404)
+            except Exception as e:
+                return make_response(e, 400)
+
+        def patch(self, blobId):
+            """Alternative to set the visibility of a blob."""
+            return self.put(blobId)
+
     @ns_blob.route('/<string:blobId>/acl/<string:username>')
     @api.doc(params={'blobId': 'A Blob ID', 'username': 'A Username'})
     class BlobUserACL(Resource):
@@ -198,12 +223,12 @@ class ApiService:
 
     @property
     def base_uri(self):
-        '''Get the base URI to access the API'''
+        """Get the base URI to access the API"""
         host = '127.0.0.1' if self._host_ in ['0.0.0.0'] else self._host_
         return f'http://{host}:{self._port_}'
 
     def start(self):
-        '''Start HTTP blobapi'''
+        """Start HTTP blobapi"""
         self._app_.run(host=self._host_, port=self._port_, debug=HTTPS_DEBUG_MODE)
 
 

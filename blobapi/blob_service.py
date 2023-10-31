@@ -129,3 +129,25 @@ class BlobDB:
                 hashes.append({"hash_type": hash_type,"hexdigest": blob_hash})
 
         return hashes
+
+    def setVisibility(self, blob_id, public):
+        """Change the visibility of a blob."""
+        self._exists_(blob_id)
+        self._blobs_[blob_id]['public'] = public
+        self._commit_()
+
+    def addPermission(self, blob_id, user):
+        """Add read permissions to a user for a blob."""
+        self._exists_(blob_id)
+        if 'users' not in self._blobs_[blob_id]:
+            self._blobs_[blob_id]['users'] = []
+        if user not in self._blobs_[blob_id]['users']:
+            self._blobs_[blob_id]['users'].append(user)
+        self._commit_()
+
+    def removePermission(self, blob_id, user):
+        """Remove read permissions from a user for a blob."""
+        self._exists_(blob_id)
+        if 'users' in self._blobs_[blob_id] and user in self._blobs_[blob_id]['users']:
+            self._blobs_[blob_id]['users'].remove(user)
+        self._commit_()
