@@ -51,9 +51,10 @@ def routeApp(app, BLOBDB):
         'URL': fields.String(required=True, description='Blob URL')
     })
 
+    # Define the model for the response
     hash_model = api.model('Hash', {
-        'hash_type': fields.String(description='Hash Type'),
-        'hexdigest': fields.String(description='Hash Digest')
+        'hash_type': fields.String(required=True, description='Hash Type (e.g., md5, sha256)'),
+        'hexdigest': fields.String(required=True, description='The computed hash for the blob')
     })
 
     visibility_model = api.model('Visibility', {
@@ -124,8 +125,17 @@ def routeApp(app, BLOBDB):
                 return make_response(e, 404)
 
         @api.doc('update_blob')
-        def put(self, blobId):
-            return "", 204
+        @api.response(204, 'Updated')
+        @api.response(404, 'Not Found')
+        @api.marshal_with(blob_model, code=204)
+        @api.response(409, 'Conflict')
+        @api.response(401, 'Unauthorized')
+        def delete(self, blobId):
+            try:
+                BLOBDB.updateBlob(blobId)
+                return '', 204
+            except ObjectNotFound as e:
+                return make_response(e, 404)
 
     @ns_blob.route('/<string:blobId>/hash')
     @api.doc(params={'blobId': 'A Blob ID'})
@@ -133,7 +143,11 @@ def routeApp(app, BLOBDB):
         @api.doc('get_blob_hash')
         @api.marshal_with(hash_model)
         def get(self, blobId):
-            return {'hash_type': 'md5', 'hexdigest': 'd41d8cd98f00b204e9800998ecf8427e'}
+            """Get blob hash"""
+            try:
+                return BLOBDB.getBlobHash(blobId)
+            except ObjectNotFound as e:
+                return make_response(e, 404)
 
     @ns_blob.route('/<string:blobId>/visibility')
     @api.doc(params={'blobId': 'A Blob ID'})
