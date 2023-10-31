@@ -53,7 +53,7 @@ class BlobDB:
             raise ObjectNotFound(blob_id)
         return self._blobs_[blob_id]
 
-    def newBlob(self, file):
+    def newBlob(self, file, user):
         # Save the file and generate blob metadata
         if not file:
             raise ValueError("File not provided")
@@ -72,7 +72,7 @@ class BlobDB:
         file.save(url)
 
         # Save blob info to the database
-        self._blobs_[blob_id] = {"URL": url}
+        self._blobs_[blob_id] = {"URL": url, "public": False, "users": [user]}
         self._commit_()
 
         return blob_id, url

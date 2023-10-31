@@ -2,33 +2,32 @@
 
 import argparse
 import logging
-import os
 import sys
 
+from adiauthcli import Client
+from adiauthcli.errors import UserNotExists
 from flask import Flask, make_response, request
 from flask_restx import Api, Resource, fields, reqparse
 from werkzeug.datastructures.file_storage import FileStorage
+from werkzeug.exceptions import Conflict
 
-from werkzeug.exceptions import Conflict, NotFound
-
-from blobapi import DEFAULT_STORAGE, DEFAULT_BLOB_DB, DEFAULT_ADDRESS, DEFAULT_PORT, HTTPS_DEBUG_MODE
+from blobapi import DEFAULT_STORAGE, DEFAULT_BLOB_DB, DEFAULT_ADDRESS, DEFAULT_PORT, HTTPS_DEBUG_MODE, ADMIN_TOKEN
 from blobapi.blob_service import BlobDB
 from blobapi.errors import ObjectAlreadyExists, ObjectNotFound
 
+# valentin a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3
 
-def routeApp(app, BLOBDB):
+def routeApp(app, client: Client, BLOBDB):
     """Route API REST to web"""
 
-    authorizations = {
-        "jsonWebToken": {
-            "type": "apiKey",
-            "in": "header",
-            "name": "AuthToken"
-        }
-    }
-
-    api = Api(app, version='1.0.1', title='Object Storage Service',
-              description='API for managing blobs or byte packages.', authorizations=authorizations)
+    authorizations = {"AuthToken": {"type": "apiKey", "in": "header", "name": "AuthToken"}}
+    api = Api(app,
+              version='1.0.1',
+              title='Object Storage Service',
+              description='API for managing blobs or byte packages.',
+              authorizations=authorizations,
+              security='AuthToken'
+              )
 
     # Namespaces
     status_blob = api.namespace('api/v1/status', description='Status of the service')
@@ -64,6 +63,15 @@ def routeApp(app, BLOBDB):
         'allowed_users': fields.List(fields.String, description='Allowed Users')
     })
 
+    def get_client_token():
+        auth_token = request.headers.get('AuthToken')
+        if not auth_token:
+            return make_response('Invalid or missing AuthToken', 401)
+        try:
+            return client.token_owner(auth_token)
+        except UserNotExists:
+            return make_response('Invalid or missing AuthToken', 401)
+
     # Status endpoints
     @status_blob.route('/')
     class StatusCollection(Resource):
@@ -80,11 +88,10 @@ def routeApp(app, BLOBDB):
         @api.response(409, 'Conflict')
         @api.response(401, 'Unauthorized')
         @api.header('AuthToken', 'The authorization token', required=True)
+        @api.doc(security='AuthToken')
         def post(self):
             # Authorization check
-            # auth_token = request.headers.get('AuthToken')
-            # if not auth_token or auth_token != "EXPECTED_TOKEN_VALUE":  # Replace with actual token value or verification mechanism
-            #    return make_response('Invalid or missing AuthToken', 401)
+            owner = get_client_token()
 
             # Check if the post request has the file part
             if 'file' not in request.files:
@@ -95,7 +102,7 @@ def routeApp(app, BLOBDB):
             if file.filename == '':
                 return make_response('No selected file', 400)
             try:
-                blob_id, url = BLOBDB.newBlob(file)
+                blob_id, url = BLOBDB.newBlob(file, owner)
             except ObjectAlreadyExists as e:
                 raise Conflict(description=str(e))
 
@@ -200,26 +207,77 @@ def routeApp(app, BLOBDB):
             """Alternative to set the visibility of a blob."""
             return self.put(blobId)
 
-    @ns_blob.route('/<string:blobId>/acl/<string:username>')
-    @api.doc(params={'blobId': 'A Blob ID', 'username': 'A Username'})
-    class BlobUserACL(Resource):
-        @api.doc('remove_user_acl')
-        def delete(self, blobId, username):
-            return "", 204
+
+#    @ns_blob.route('/<string:blobId>/acl/<string:username>')
+#    class BlobUserACL(Resource):
+#
+#        # For DELETE
+#        @api.doc('remove_user_acl')
+#        @api.response(204, 'User removed from ACL')
+#        @api.response(401, 'Unauthorized')
+#        @api.response(404, 'Blob Not Found or User Not in ACL')
+#        def delete(self, blobId, username):
+#            auth_token = request.headers.get('AuthToken')
+#            if not auth_token or not client.ownerOf(auth_token):
+#                return make_response('Invalid or missing AuthToken', 401)
+
+#            # Logic to remove 'username' from the allowed_users of blobId in your database
+#            # success = BLOBDB.removeUserFromACL(blobId, username)
+
+#            if not success:
+#                return make_response(f'User {username} not found in ACL of Blob {blobId}', 404)
+
+#            return '', 204
+
+#    @ns_blob.route('/<string:blobId>/acl')
+#    class BlobACL(Resource):
+#
+#        @api.doc('update_acl')
+#        @api.expect(acl_model)
+#        @api.response(204, 'ACL Updated')
+#        @api.response(401, 'Unauthorized')
+#        @api.response(404, 'Blob Not Found')
+#        def put(self, blobId):
+#            auth_token = request.headers.get('AuthToken')
+#            if not auth_token or not client.(auth_token):
+#                return make_response('Invalid or missing AuthToken', 401)
+
+#            data = request.json
+#            allowed_users = data.get('allowed_users', [])
+
+#            # Logic to update the allowed_users for blobId in your database
+#            # BLOBDB.updateACL(blobId, allowed_users)
+#
+#            return '', 204
+#
+#        patch = put
+#
+#        # For GET
+#        @api.doc('get_acl')
+#        @api.marshal_with(acl_model)
+#        def get(self, blobId):
+#            auth_token = request.headers.get('AuthToken')
+#            if not auth_token or not client.auth_token(auth_token):
+#                return make_response('Invalid or missing AuthToken', 401)
+#
+#            # Logic to retrieve the allowed_users for blobId from your database
+#            # allowed_users = BLOBDB.getACL(blobId)
+#
+#            return {'user': token_manager.ownerOf(auth_token), 'allowed_users': allowed_users}
 
 
 class ApiService:
     """Wrap all components used by the service"""
 
-    def __init__(self, db_file, host=DEFAULT_ADDRESS, port=DEFAULT_PORT):
+    def __init__(self, db_file, client, host=DEFAULT_ADDRESS, port=DEFAULT_PORT):
         self._blobdb_ = BlobDB(db_file)
-
+        self._client_ = client
         self._host_ = host
         self._port_ = port
 
         self._app_ = Flask(__name__.split('.', maxsplit=1)[0])
         self._app_.config['ERROR_404_HELP'] = False
-        routeApp(self._app_, self._blobdb_)
+        routeApp(self._app_, self._client_, self._blobdb_)
 
     @property
     def base_uri(self):
@@ -259,9 +317,10 @@ def main():
     """Entry point for the API"""
     user_options = parse_commandline()
 
-    service = ApiService(
-        user_options.db_file, user_options.address, user_options.port
-    )
+    client = Client("http://localhost:3001", check_service=True)
+    service = ApiService(user_options.db_file, client, user_options.address, user_options.port)
+    #client.login("valentin", "123")
+    #print(client._get_token_("valentin", "123"))
     try:
         print(f'Starting service on: {service.base_uri}')
         service.start()
