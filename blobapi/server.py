@@ -346,8 +346,8 @@ def main():
 
     client = Client("http://localhost:3001", check_service=True)
     service = ApiService(user_options.db_file, client, user_options.address, user_options.port)
-    # client.login("valentin", "123") TODO remove
-    # print(client._get_token_("valentin", "123")) TODO remove
+    client.login("valentin", "123")
+    print(client._get_token_("valentin", "123"))
     try:
         print(f'Starting service on: {service.base_uri}')
         service.start()
