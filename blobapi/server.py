@@ -9,11 +9,11 @@ from adiauthcli.errors import UserNotExists
 from flask import Flask, make_response, request
 from flask_restx import Api, Resource, fields, reqparse
 from werkzeug.datastructures.file_storage import FileStorage
-from werkzeug.exceptions import Conflict
+from werkzeug.exceptions import Conflict, Unauthorized
 
 from blobapi import DEFAULT_STORAGE, DEFAULT_BLOB_DB, DEFAULT_ADDRESS, DEFAULT_PORT, HTTPS_DEBUG_MODE, ADMIN_TOKEN
 from blobapi.blob_service import BlobDB
-from blobapi.errors import ObjectAlreadyExists, ObjectNotFound, Unauthorized
+from blobapi.errors import ObjectAlreadyExists, ObjectNotFound
 
 
 def routeApp(app, client: Client, BLOBDB):
@@ -64,12 +64,12 @@ def routeApp(app, client: Client, BLOBDB):
 
     def get_client_token():
         auth_token = request.headers.get('AuthToken')
-        if not auth_token:
-            return make_response('Invalid or missing AuthToken', 401)
-        try:
-            return client.token_owner(auth_token)
-        except UserNotExists:
-            return make_response('Invalid or missing AuthToken', 401)
+        if auth_token:
+            try:
+                return client.token_owner(auth_token)
+            except UserNotExists:
+                raise Unauthorized('Invalid AuthToken')
+        raise Unauthorized(description="Missing token")
 
     # Status endpoints
     @status_blob.route('/')
@@ -102,7 +102,6 @@ def routeApp(app, client: Client, BLOBDB):
                 blob_id, url = BLOBDB.newBlob(file, get_client_token())
             except ObjectAlreadyExists as e:
                 raise Conflict(description=str(e))
-
             return {'blobId': blob_id, 'URL': url}, 201
 
     @ns_blob.route('/<string:blobId>')

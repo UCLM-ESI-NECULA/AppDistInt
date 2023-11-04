@@ -1,13 +1,4 @@
-#!/usr/bin/env python3
-
 """Rest Api errors"""
-
-# Exit codes
-
-NO_ERROR = 0
-CMDCLI_ERROR = 1
-CONNECTION_ERROR = 2
-UNAUTHORIZED = 3
 
 
 # Custom exceptions
