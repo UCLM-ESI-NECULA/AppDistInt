@@ -10,7 +10,3 @@ HTTPS_DEBUG_MODE = False
 
 DEFAULT_STORAGE = 'storage'
 DEFAULT_BLOB_DB = 'blobs.json'
-
-ADMIN = 'admin'
-ADMIN_TOKEN = 'GJj0dRe0KJKX8kCgwYBXWb-NBio'
-USER_TOKEN = 'user-token'

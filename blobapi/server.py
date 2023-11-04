@@ -9,11 +9,11 @@ from adiauthcli.errors import UserNotExists
 from flask import Flask, make_response, request
 from flask_restx import Api, Resource, fields, reqparse
 from werkzeug.datastructures.file_storage import FileStorage
-from werkzeug.exceptions import Conflict, Unauthorized
+from werkzeug.exceptions import Conflict, Unauthorized, BadRequest, NotFound
 
-from blobapi import DEFAULT_STORAGE, DEFAULT_BLOB_DB, DEFAULT_ADDRESS, DEFAULT_PORT, HTTPS_DEBUG_MODE, ADMIN_TOKEN
+from blobapi import DEFAULT_STORAGE, DEFAULT_BLOB_DB, DEFAULT_ADDRESS, DEFAULT_PORT, HTTPS_DEBUG_MODE
 from blobapi.blob_service import BlobDB
-from blobapi.errors import ObjectAlreadyExists, ObjectNotFound
+from blobapi.errors import ObjectAlreadyExists, ObjectNotFound, UnauthorizedBlob
 
 
 def routeApp(app, client: Client, BLOBDB):
@@ -86,18 +86,15 @@ def routeApp(app, client: Client, BLOBDB):
         @api.marshal_with(blob_model, code=201)
         @api.response(409, 'Conflict')
         @api.response(401, 'Unauthorized')
-        @api.header('AuthToken', 'The authorization token', required=True)
-        @api.doc(security='AuthToken')
         def post(self):
 
             # Check if the post request has the file part
             if 'file' not in request.files:
-                return make_response('No file', 400)
+                raise BadRequest('No file')
 
             file = request.files['file']
-            # Check if the user did not select a file
             if file.filename == '':
-                return make_response('No selected file', 400)
+                return BadRequest('No selected file')
             try:
                 blob_id, url = BLOBDB.newBlob(file, get_client_token())
             except ObjectAlreadyExists as e:
@@ -111,6 +108,7 @@ def routeApp(app, client: Client, BLOBDB):
     class BlobItem(Resource):
         @api.doc('get_blob')
         @api.response(404, 'Not Found')
+        @api.response(401, 'Unauthorized')
         def get(self, blobId):
             auth_token = request.headers.get('AuthToken')
             try:
@@ -119,21 +117,22 @@ def routeApp(app, client: Client, BLOBDB):
                 else:
                     return BLOBDB.getBlob(blobId, get_client_token())
             except ObjectNotFound as e:
-                return make_response(e, 404)
+                raise NotFound(description=str(e))
+            except UnauthorizedBlob as e:
+                raise Unauthorized(description=str(e))
 
         @api.doc('delete_blob')
         @api.response(204, 'Deleted')
         @api.response(404, 'Not Found')
-        @api.header('AuthToken', 'The authorization token', required=True)
-        @api.doc(security='AuthToken')
+        @api.response(401, 'Unauthorized')
         def delete(self, blobId):
             try:
                 BLOBDB.removeBlob(blobId, get_client_token())
                 return '', 204
             except ObjectNotFound as e:
-                return make_response(e, 404)
-            except Unauthorized as e:
-                return make_response(e, 401)
+                raise NotFound(description=str(e))
+            except UnauthorizedBlob as e:
+                raise Unauthorized(description=str(e))
 
         @api.doc('update_blob')
         @api.response(204, 'Updated')
@@ -141,25 +140,22 @@ def routeApp(app, client: Client, BLOBDB):
         @api.marshal_with(blob_model, code=204)
         @api.response(409, 'Conflict')
         @api.response(401, 'Unauthorized')
-        @api.header('AuthToken', 'The authorization token', required=True)
-        @api.doc(security='AuthToken')
+        @api.expect(file_upload_parser)
         def put(self, blobId):
-            # Check if the post request has the file part
             if 'file' not in request.files:
-                return make_response('No file', 400)
+                return BadRequest('No  file')
 
             file = request.files['file']
-            # Check if the user did not select a file
             if file.filename == '':
-                return make_response('No selected file', 400)
+                return BadRequest('No selected file')
             try:
                 BLOBDB.updateBlob(blobId, file, get_client_token())
             except ObjectAlreadyExists as e:
-                raise make_response(e, 409)
-            except Unauthorized as e:
-                return make_response(e, 401)
+                raise Conflict(description=str(e))
+            except UnauthorizedBlob as e:
+                raise Unauthorized(description=str(e))
             except ObjectNotFound as e:
-                return make_response(e, 404)
+                raise NotFound(description=str(e))
             return '', 204
 
     @ns_blob.route('/<string:blobId>/hash')
@@ -345,8 +341,10 @@ def main():
 
     client = Client("http://localhost:3001", check_service=True)
     service = ApiService(user_options.db_file, client, user_options.address, user_options.port)
-    client.login("valentin", "123")
+    #client.login("valentin", "123")
+    client.login("pablo", "123")
     print(client._get_token_("valentin", "123"))
+    print(client._get_token_("pablo", "123"))
     try:
         print(f'Starting service on: {service.base_uri}')
         service.start()

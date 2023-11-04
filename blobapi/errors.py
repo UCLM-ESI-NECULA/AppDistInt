@@ -3,7 +3,7 @@
 
 # Custom exceptions
 
-class Unauthorized(Exception):
+class UnauthorizedBlob(Exception):
     """Authorization error"""
 
     def __init__(self, user='unknown', reason='unknown'):

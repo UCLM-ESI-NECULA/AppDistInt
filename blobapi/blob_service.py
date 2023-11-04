@@ -14,7 +14,7 @@ from flask import send_file
 from werkzeug.utils import secure_filename
 
 from blobapi import DEFAULT_ENCODING, DEFAULT_STORAGE
-from blobapi.errors import ObjectAlreadyExists, ObjectNotFound, Unauthorized
+from blobapi.errors import ObjectAlreadyExists, ObjectNotFound, UnauthorizedBlob
 
 _WRN = logging.warning
 
@@ -28,26 +28,22 @@ def _initialize_(db_file):
 
 def raise_user_no_permission(blob_data, user):
     if user not in blob_data["users"]:
-        raise Unauthorized(user=user, reason="User has no permissions to remove this blob")
+        raise UnauthorizedBlob(user=user, reason="User has no permissions for this blob")
 
 
 def raise_optional_token(blob_data, user):
     if user not in blob_data["users"] and not blob_data["public"]:
-        raise Unauthorized(user=user, reason="User has no permissions to access this blob")
+        raise UnauthorizedBlob(user=user, reason="User has no permissions for this blob")
 
 
 class BlobDB:
-    """
-        Repository for the blobs
-    """
+    """Repository for the blobs"""
 
     def __init__(self, db_file):
         if not Path(db_file).exists():
             _initialize_(db_file)
         self._db_file_ = db_file
-
         self._blobs_ = {}
-
         self._read_db_()
 
     def _read_db_(self):
@@ -74,9 +70,9 @@ class BlobDB:
 
         """Add new blob to DB"""
         if url in [blob["URL"] for blob in self._blobs_.values()]:
-            raise ObjectAlreadyExists(f'Blob "{url}" already exists')
+            raise ObjectAlreadyExists(url)
         if blob_id in self._blobs_:
-            raise ObjectAlreadyExists(f'Blob with id:  "{blob_id}" already exists')
+            raise ObjectAlreadyExists(blob_id)
 
         # Save the file
         file.save(url)
