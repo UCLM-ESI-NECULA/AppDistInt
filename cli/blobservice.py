@@ -1,11 +1,5 @@
-#!/usr/bin/env python3
-#
+"""Library to access the blob service"""
 
-'''
-    Library to access to AUTH service
-'''
-
-import copy
 import json
 import hashlib
 import os
@@ -15,54 +9,18 @@ import requests
 from typing import Optional, Union, List
 
 from cli import USER_TOKEN, DEFAULT_ENCODING, HASH_PASS, USER, TOKEN, DOWNLOAD_FOLDER
+from cli.blob import Blob
 from cli.errors import Unauthorized, BlobServiceError, UserNotExists, AlreadyLogged
 
 CONTENT_JSON = {'Content-Type': 'application/json'}
 
-
-class Blob:
-    allowedUsers = []
-    isPrivate = False
-    md5 = ''
-    sha256 = ''
-
-    def __init__(self, blobId: str, authToken: Optional[str] = None):
-        self.blobId = blobId
-        self.authToken = authToken
-        self.headers = {'AuthToken': authToken} if authToken else {}
-
-    def allowUser(self, username: str) -> None:
-        pass
-
-    def delete(self) -> None:
-        response = requests.delete(f"{self._url_}/{self.blobId}", headers=self.headers)
-        if response.status_code != 200:
-            raise BlobServiceError("Error deleting the blob.")
-
-    def dumpToFile(self, localFilename: Union[str, Path, None]) -> None:
-        response = requests.get(f"{self._url_}/{self.blobId}", headers=self.headers)
-        if response.status_code == 200:
-            with open(localFilename, 'wb') as file:
-                file.write(response.content)
-        else:
-            raise BlobServiceError("Error downloading the blob.")
-
-    def revokeUser(self, username: str) -> None:
-        pass
-
-    def uploadFromFile(self, localFilename: Union[str, Path]) -> None:
-        with open(localFilename, 'rb') as file:
-            response = requests.put(f"{self._url_}/{self.blobId}", headers=self.headers, files={'file': file})
-        if response.status_code != 200:
-            raise BlobServiceError("Error uploading file to blob.")
-
-
 class BlobService:
+    """BlobService implementation"""
     def __init__(self, serviceURL: str, authToken: Optional[str] = None):
         self._url_ = serviceURL[:-1] if serviceURL.endswith('/') else serviceURL
         self._authToken_ = authToken
         self._headers_ = {'AuthToken': authToken} if authToken else {}
-
+        self._blobs_ = []
         if not self.service_up:
             raise BlobServiceError(serviceURL, 'service seems down')
 

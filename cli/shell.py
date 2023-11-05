@@ -13,14 +13,12 @@ _COMMENT_TAG_ = '#'
 
 class Shell(cmd.Cmd):
     """CMD shell implementation"""
-    admin_token = None
     prompt = ''
     stop_on_error = True
     bad_exit = False
     interactive = True
     line_no = 0
     error_cause = 'Unknown error, see logs'
-
     _auth_ = None
     _blob_ = None
 
