@@ -14,8 +14,10 @@ from cli.errors import Unauthorized, BlobServiceError, UserNotExists, AlreadyLog
 
 CONTENT_JSON = {'Content-Type': 'application/json'}
 
+
 class BlobService:
     """BlobService implementation"""
+
     def __init__(self, serviceURL: str, authToken: Optional[str] = None):
         self._url_ = serviceURL[:-1] if serviceURL.endswith('/') else serviceURL
         self._authToken_ = authToken
@@ -92,12 +94,12 @@ class AuthService:
 
     @property
     def logged(self) -> bool:
-        '''Return if instance is logged or not'''
+        """Return if instance is logged or not"""
         return self._token_ is not None
 
     @property
     def service_up(self) -> bool:
-        '''Return is service is running or not'''
+        """Return is service is running or not"""
         try:
             result = requests.get(f'{self._url_}/v1/status', verify=False)
             return result.status_code == 200
@@ -105,7 +107,7 @@ class AuthService:
             return False
 
     def login(self, user: str, password: str) -> None:
-        '''Try to login'''
+        """Try to login"""
         if self.logged:
             if user != self._user_:
                 raise AlreadyLogged(user=self._user_)

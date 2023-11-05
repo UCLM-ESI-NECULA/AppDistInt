@@ -229,29 +229,29 @@ class Shell(cmd.Cmd):
         return True
 
     def help_connect_to(self):
-        self.output('''Usage:
+        self.output("""Usage:
 \tconnect_to <API_uri>
-Instance new Blob client with the given URL.''')
+Instance new Blob client with the given URL.""")
 
     def help_disconnect(self):
-        self.output('''Usage:
+        self.output("""Usage:
 \tdisconnect
-Delete current client instance.''')
+Delete current client instance.""")
 
     def help_set_admin_token(self):
-        self.output('''Usage:
+        self.output("""Usage:
 \tset_admin_token [<ADMIN TOKEN>]
-Set (or unset) the administrator token''')
+Set (or unset) the administrator token""")
 
     def help_new_user(self):
-        self.output('''Usage:
+        self.output("""Usage:
 \tnew_user [<USERNAME> [<PASSWORD>]]
-Create new user. If some argument is missing, it will be requested interactively''')
+Create new user. If some argument is missing, it will be requested interactively""")
 
     def help_quit(self):
-        self.output('''Usage:
+        self.output("""Usage:
 \tquit
-Disconnects and close the shell.''')
+Disconnects and close the shell.""")
 
 
 def prompt_string(message) -> str:

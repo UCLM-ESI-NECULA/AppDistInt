@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-'''
+"""
     Implementacion del servicio de autenticacion
-'''
+"""
 import hashlib
 import json
 import logging
