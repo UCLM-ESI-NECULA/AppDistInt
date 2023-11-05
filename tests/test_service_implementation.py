@@ -1,3 +1,4 @@
+import string
 import unittest
 import tempfile
 import os
@@ -121,10 +122,12 @@ class TestPersistentDB(unittest.TestCase):
     def test_getBlobHash(self):
         """Test getting blob hash."""
         blob_id, _ = self.blob_service.newBlob(self.test_file_storage, USER1)
-        hashes = self.blob_service.getBlobHash(blob_id, USER1)
-        # Check if correct hashes are returned
-        self.assertIsInstance(hashes, list)
-        self.assertTrue(any(hash_dict['hash_type'] == 'md5' for hash_dict in hashes))
+        hash_type = 'md5'
+        hash_data = self.blob_service.getBlobHash(blob_id, USER1, hash_type)
+        self.assertIsInstance(hash_data, dict)
+        self.assertEqual(hash_data['hash_type'], hash_type)
+        # Verifying the hash format (it should be a hexdigest string)
+        self.assertTrue(all(c in string.hexdigits for c in hash_data['hexdigest']))
 
     def test_setVisibility(self):
         """Test setting visibility of a blob."""

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 
 DEFAULT_ENCODING = 'utf-8'
 DEFAULT_PORT = 3001

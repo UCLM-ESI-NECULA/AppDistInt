@@ -46,13 +46,9 @@ def routeApp(app, client: Client, BLOBDB):
         'URL': fields.String(required=True, description='Blob URL')
     })
 
-    # Define the model for the response
-    hash_model = api.model('HashList', {
-        'hashes': fields.List(fields.Nested(api.model('Hash', {
-            'hash_type': fields.String(required=True, description='Hash Type (e.g., md5, sha256)'),
-            'hexdigest': fields.String(required=True, description='The computed hash for the blob')
-        })))
-    })
+    hash_arg_parser = api.parser()
+    hash_arg_parser.add_argument('hash_type', type=str, required=False, location='args',
+                                 help='Type of hash to retrieve')
 
     visibility_model = api.model('Visibility', {
         'public': fields.Boolean(required=True, description='Is Blob Public')
@@ -132,8 +128,8 @@ def routeApp(app, client: Client, BLOBDB):
         @api.response(401, 'Unauthorized')
         def get(self, blobId):
             try:
-                 file_path = BLOBDB.getBlob(blobId, get_optional_client_token())
-                 return send_file(file_path, as_attachment=True)
+                file_path = BLOBDB.getBlob(blobId, get_optional_client_token())
+                return send_file(file_path, as_attachment=True)
             except ObjectNotFound as e:
                 raise NotFound(description=str(e))
             except UnauthorizedBlob as e:
@@ -179,14 +175,25 @@ def routeApp(app, client: Client, BLOBDB):
     @ns_blob.route('/<string:blobId>/hash')
     @api.doc(params={'blobId': 'A Blob ID'})
     class BlobHash(Resource):
+        hash_arg_parser = api.parser()
+        hash_arg_parser.add_argument('hash_type', type=str, required=True, location='args',
+                                     help='Type of hash to retrieve')
+
         @api.doc('get_blob_hash')
+        @api.expect(hash_arg_parser)
         @api.response(404, 'Not Found')
         @api.response(401, 'Unauthorized')
-        @api.marshal_with(hash_model)
         def get(self, blobId):
             """Get blob hash"""
+            args = hash_arg_parser.parse_args()
+            hash_type = args.get('hash_type')
+            if hash_type is None:
+                raise BadRequest(description="Missing hash_type")
             try:
-                return {'hashes': BLOBDB.getBlobHash(blobId, get_optional_client_token())}
+                hash_data = BLOBDB.getBlobHash(blobId, get_optional_client_token(), hash_type)
+                return hash_data
+            except ValueError as e:
+                raise BadRequest(description=str(e))
             except ObjectNotFound as e:
                 raise NotFound(description=str(e))
             except UnauthorizedBlob as e:
@@ -304,6 +311,7 @@ def routeApp(app, client: Client, BLOBDB):
             except ObjectNotFound as e:
                 raise NotFound(description=str(e))
             return '', 204
+
 
 class ApiService:
     """Wrap all components used by the service"""

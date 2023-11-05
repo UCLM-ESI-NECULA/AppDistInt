@@ -4,22 +4,5 @@
     "owner": "valentin",
     "public": false,
     "users": []
-  },
-  "caf1bd3c-e985-4e2d-a0df-df2a527c17e9": {
-    "URL": "storage/boarding-pass.pdf",
-    "owner": "pablo",
-    "public": true,
-    "users": []
-  },
-  "fc7aa45c-278e-4dfa-898c-98d92340601f": {
-    "URL": "storage/boarding-pass_1.pdf",
-    "owner": "valentin",
-    "public": false,
-    "users": [
-      "eva",
-      "paolo",
-      "luca",
-      "valentin"
-    ]
   }
 }
