@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flask import Flask
 
-from blobapi import DEFAULT_ENCODING, DEFAULT_STORAGE
+from blobapi import DEFAULT_STORAGE
 from blobapi.blob_service import BlobDB
 from werkzeug.datastructures import FileStorage
 
