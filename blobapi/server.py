@@ -6,7 +6,7 @@ import sys
 
 from adiauthcli import Client
 from adiauthcli.errors import UserNotExists
-from flask import Flask, make_response, request
+from flask import Flask, make_response, request, send_file
 from flask_restx import Api, Resource, fields, reqparse
 from werkzeug.datastructures.file_storage import FileStorage
 from werkzeug.exceptions import Conflict, Unauthorized, BadRequest, NotFound
@@ -117,7 +117,8 @@ def routeApp(app, client: Client, BLOBDB):
         @api.response(401, 'Unauthorized')
         def get(self, blobId):
             try:
-                return BLOBDB.getBlob(blobId, get_optional_client_token())
+                 file_path = BLOBDB.getBlob(blobId, get_optional_client_token())
+                 return send_file(file_path, as_attachment=True)
             except ObjectNotFound as e:
                 raise NotFound(description=str(e))
             except UnauthorizedBlob as e:

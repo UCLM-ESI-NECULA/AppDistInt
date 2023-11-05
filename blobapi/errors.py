@@ -41,10 +41,3 @@ class ObjectAlreadyExists(Exception):
 
     def __str__(self):
         return f'Trying to create already created item "{self._item_}"'
-
-
-class MissingMandatoryArgument(Exception):
-    """Some required argument is missing"""
-
-    def __str__(self):
-        return 'Mandatory argument is required but not provided'

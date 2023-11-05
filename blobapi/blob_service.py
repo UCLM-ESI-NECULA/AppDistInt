@@ -10,7 +10,6 @@ import os
 import uuid
 from pathlib import Path
 
-from flask import send_file
 from werkzeug.utils import secure_filename
 
 from blobapi import DEFAULT_ENCODING, DEFAULT_STORAGE
@@ -63,10 +62,13 @@ class BlobDB:
         # Save the file and generate blob metadata
         if not file:
             raise ValueError("File not provided")
-
         filename = secure_filename(file.filename)
         url = os.path.join(DEFAULT_STORAGE, filename)
         blob_id = str(uuid.uuid4())
+
+        storage_path = os.path.dirname(url)
+        if not os.path.exists(storage_path):
+            os.makedirs(storage_path)
 
         """Add new blob to DB"""
         if url in [blob["URL"] for blob in self._blobs_.values()]:
@@ -88,7 +90,7 @@ class BlobDB:
         blob_data = self._exists_(blob_id)
 
         raise_optional_token(blob_data, user)
-        return send_file(blob_data["URL"], as_attachment=True)
+        return blob_data["URL"]
 
     def removeBlob(self, blob_id, user):
         """Remove blob from DB and filesystem using its ID"""
@@ -177,6 +179,7 @@ class BlobDB:
         """Update read permissions from a user for a blob."""
         self._exists_(blob_id)
         raise_user_no_owner(self._blobs_[blob_id], owner)
-        users.remove(self._blobs_[blob_id]['owner'])
+        if users is not None and self._blobs_[blob_id]['owner'] in users:
+            users.remove(self._blobs_[blob_id]['owner'])
         self._blobs_[blob_id]['users'] = users
         self._commit_()
