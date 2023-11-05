@@ -9,7 +9,7 @@ import logging
 import argparse
 from io import StringIO
 
-from cli import BlobService, AuthService
+from cli.blobservice import BlobService, AuthService
 from cli.errors import CMDCLI_ERROR, NO_ERROR, SCRIPT_ERROR
 from cli.shell import Shell, prompt_password
 
@@ -40,11 +40,11 @@ def main():
     # Use the same client instance for all input files
     blob_client = None
     auth_client = None
-    if user_options.BLOBLUR is not None and user_options.AUTHURL is not None:
-        if user_options.authToken:
+    if user_options.BLOBURL is not None and user_options.AUTHURL is not None:
+        if user_options.authtoken:
             _DEB('Using Auth token')
-            blob_client = BlobService(user_options.BLOBLUR, authToken=user_options.authToken)
-            auth_client = AuthService(user_options.AUTHURL, authToken=user_options.authToken)
+            blob_client = BlobService(user_options.BLOBURL, authToken=user_options.authtoken)
+            auth_client = AuthService(user_options.AUTHURL, authToken=user_options.authtoken)
         else:
             auth_client = AuthService(user_options.AUTHURL)
             if user_options.username:
@@ -52,7 +52,9 @@ def main():
                 if not user_options.password:
                     user_options.password = prompt_password()
                 auth_client.login(user_options.username, user_options.password)
-                blob_client = BlobService(user_options.BLOBLUR, authToken=auth_client.auth_token)
+                blob_client = BlobService(user_options.BLOBURL, authToken=auth_client.auth_token)
+            else:
+                raise Exception('Username is required')
 
     output = StringIO()
     interactive = False
@@ -101,7 +103,8 @@ def parse_command_line():
                         help='Scripts to run. Stdin (interactive) used if omitted.')
 
     auth = parser.add_argument_group('Login options')
-
+    auth.add_argument('-a', '--authtoken', default=None,
+                      dest='authtoken', help='Set auth token')
     auth.add_argument('-u', '--username', default=None,
                       dest='username', help='Username to auto-login (default: disable auto-login)')
     auth.add_argument('-p', '--password', action='store', default=None,

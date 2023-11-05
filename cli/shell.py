@@ -6,7 +6,7 @@ import logging
 
 __version__ = '1.0'
 
-from cli.authservice import BlobService, AuthService
+from cli.blobservice import BlobService, AuthService
 
 _COMMENT_TAG_ = '#'
 
@@ -72,7 +72,7 @@ class Shell(cmd.Cmd):
     def __select_prompt__(self):
         self.prompt = ''
         if self.interactive:
-            self.prompt = 'ADI-Auth'
+            self.prompt = 'Blob Rest'
             if self.auth_client is not None:
                 if self.auth_client.user is not None and self.auth_client.logged:
                     self.prompt += f'({self.auth_client.user})'
@@ -83,6 +83,69 @@ class Shell(cmd.Cmd):
     def default(self, line: str) -> bool:
         self.output(f'*** Unknown syntax: {line}')
         return self.stop_on_error
+
+    def do_get_blobs(self, line):
+        """Get the list of blobs"""
+        if not self.blob_client:
+            logging.error('No connected to a Blob service, connect first')
+            return self.stop_on_error
+        try:
+            blobs = self.blob_client.getBlobs()
+            for blob in blobs:
+                print(blob)
+        except Exception as error:
+            logging.error(f'Cannot get blobs: {error}')
+            return self.stop_on_error
+
+    def do_get_blob(self, line):
+        """Get the blob"""
+        if not self.blob_client:
+            logging.error('No connected to a Blob service, connect first')
+            return self.stop_on_error
+        line = line.strip().split()
+        if len(line) != 1:
+            logging.error('get_blob takes one argument only')
+            return self.stop_on_error
+        blob_id = line[0]
+        try:
+            blob = self.blob_client.getBlob(blob_id)
+            print(blob.blobId)
+        except Exception as error:
+            logging.error(f'Cannot get blob: {error}')
+            return self.stop_on_error
+
+    def do_delete_blob(self, line):
+        """Delete the blob"""
+        if not self.blob_client:
+            logging.error('No connected to a Blob service, connect first')
+            return self.stop_on_error
+        line = line.strip().split()
+        if len(line) != 1:
+            logging.error('delete_blob takes one argument only')
+            return self.stop_on_error
+        blob_id = line[0]
+        try:
+            self.blob_client.deleteBlob(blob_id)
+        except Exception as error:
+            logging.error(f'Cannot delete blob: {error}')
+            return self.stop_on_error
+
+    def do_create_blob(self, line):
+        """Create a blob"""
+        if not self.blob_client:
+            logging.error('No connected to a Blob service, connect first')
+            return self.stop_on_error
+        line = line.strip().split()
+        if len(line) != 1:
+            logging.error('create_blob takes one argument only')
+            return self.stop_on_error
+        path = line[0]
+        try:
+            blob = self.blob_client.createBlob(path)
+            print(blob.blobId)
+        except Exception as error:
+            logging.error(f'Cannot create blob: {error}')
+            return self.stop_on_error
 
     def do_connect_to_auth(self, auth_url):
         """Set the auth service URI"""
@@ -170,7 +233,7 @@ class Shell(cmd.Cmd):
     def help_connect_to(self):
         self.output('''Usage:
 \tconnect_to <API_uri>
-Instance new ADI Auth client with the given URL.''')
+Instance new Blob client with the given URL.''')
 
     def help_disconnect(self):
         self.output('''Usage:

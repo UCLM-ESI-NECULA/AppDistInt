@@ -1,0 +1,3 @@
+get_blobs
+create_blob files/test
+delete_blob fbee4807-784c-4c3e-98a4-bcdd578223d2
