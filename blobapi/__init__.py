@@ -1,6 +1,4 @@
-"""
-    Configuration file for the rest API
-"""
+"""Configuration file for the rest API"""
 
 DEFAULT_ENCODING = 'utf-8'
 DEFAULT_PORT = 3002

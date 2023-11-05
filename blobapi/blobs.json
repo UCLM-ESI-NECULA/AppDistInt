@@ -1,19 +1,8 @@
 {
-  "caf1bd3c-e985-4e2d-a0df-df2a527c17e9": {
-    "URL": "storage/boarding-pass.pdf",
-    "owner": "pablo",
-    "public": false,
-    "users": []
-  },
-  "fc7aa45c-278e-4dfa-898c-98d92340601f": {
-    "URL": "storage/boarding-pass_1.pdf",
+  "ba90f69f-8162-4eee-8c5c-cea563451e0e": {
+    "URL": "storage/test",
     "owner": "valentin",
     "public": false,
-    "users": [
-      "eva",
-      "paolo",
-      "luca",
-      "valentin"
-    ]
+    "users": []
   }
 }

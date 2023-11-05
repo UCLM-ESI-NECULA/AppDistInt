@@ -1,8 +1,6 @@
-#!/usr/bin/env python3
 
-'''
-    Implementacion del servicio de autenticacion
-'''
+"""Blob DB implementation."""
+
 import hashlib
 import json
 import logging
@@ -26,11 +24,13 @@ def _initialize_(db_file):
 
 
 def raise_user_no_owner(blob_data, user):
+    """Raise an exception if the user is not the owner of the blob"""
     if user != blob_data["owner"]:
         raise UnauthorizedBlob(user=user, reason=f'{user} is not the owner of this blob')
 
 
 def raise_optional_token(blob_data, user):
+    """Raise an exception if the user is not the owner of the blob or has no permissions for it"""
     if not blob_data["public"] and user != blob_data["owner"] and (not user or user not in blob_data["users"]):
         raise UnauthorizedBlob(user=user, reason="User has no permissions for this blob")
 
@@ -92,6 +92,14 @@ class BlobDB:
         raise_optional_token(blob_data, user)
         return blob_data["URL"]
 
+    def getBlobs(self, user=None):
+        """Retrieve all blobs"""
+        return [
+                {'blobId': blob_id, 'URL': blob_data['URL']}
+                for blob_id, blob_data in self._blobs_.items()
+                if blob_data['public'] or user == blob_data['owner'] or user in blob_data['users']
+        ]
+
     def removeBlob(self, blob_id, user):
         """Remove blob from DB and filesystem using its ID"""
         blob_data = self._exists_(blob_id)
@@ -115,28 +123,25 @@ class BlobDB:
 
         # Remove the old file
         os.remove(self._blobs_[blob_id]["URL"])
-
-        # Save the new file
         new_file.save(url)
 
         # Update blob info in the database
         self._blobs_[blob_id]["URL"] = url
         self._commit_()
 
-    def getBlobHash(self, blob_id, user):
-        """Compute hashes for the blob based on multiple hash types."""
+    def getBlobHash(self, blob_id, user, hash_type=None):
+        """Compute the hash for the blob based on a specified hash type."""
         blob_data = self._exists_(blob_id)
         raise_optional_token(blob_data, user)
-        hash_types = ['md5', 'sha1', 'sha256', 'sha512']
-        hashes = []
+        supported_hash_types = ['md5', 'sha1', 'sha256', 'sha512']
+        if hash_type not in supported_hash_types:
+            raise ValueError(f'Hash type {hash_type} is not supported. Supported hash types are: {supported_hash_types}')
         with open(blob_data["URL"], 'rb') as f:
             file_data = f.read()
-            for hash_type in hash_types:
-                hash_func = getattr(hashlib, hash_type)
-                blob_hash = hash_func(file_data).hexdigest()
-                hashes.append({"hash_type": hash_type, "hexdigest": blob_hash})
+            hash_func = getattr(hashlib, hash_type)
+            blob_hash = hash_func(file_data).hexdigest()
 
-        return hashes
+        return {"hash_type": hash_type, "hexdigest": blob_hash}
 
     def setVisibility(self, blob_id, public, user):
         """Change the visibility of a blob."""

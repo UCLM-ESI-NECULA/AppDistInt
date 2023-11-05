@@ -1,3 +1,4 @@
+import string
 import unittest
 import tempfile
 import os
@@ -73,6 +74,38 @@ class TestPersistentDB(unittest.TestCase):
         with self.assertRaises(ObjectNotFound):
             self.blob_service._exists_(blob_id)
 
+    def test_getBlobs(self):
+        """Test retrieving a list of blobs based on user permissions."""
+
+        # Set up mock blobs in the database
+        self.blob_service._blobs_ = {
+            'blob_id1': {'public': True, 'owner': 'user1', 'users': [], 'URL': 'blob1'},
+            'blob_id2': {'public': False, 'owner': 'user2', 'users': ['user1'], 'URL': 'blob2'},
+            'blob_id3': {'public': False, 'owner': 'user3', 'users': [], 'URL': 'blob3'},
+        }
+
+        # Define the expected results for user1
+        expected_results_user1 = [
+            {'blobId': 'blob_id1', 'URL': 'blob1'},
+            {'blobId': 'blob_id2', 'URL': 'blob2'},
+        ]
+        actual_results_user1 = self.blob_service.getBlobs(user='user1')
+        self.assertCountEqual(actual_results_user1, expected_results_user1)
+
+        expected_results_user2 = [
+            {'blobId': 'blob_id1', 'URL': 'blob1'},
+            {'blobId': 'blob_id2', 'URL': 'blob2'},
+        ]
+        actual_results_user2 = self.blob_service.getBlobs(user='user2')
+        self.assertCountEqual(actual_results_user2, expected_results_user2)
+
+        # public blobs
+        expected_results_anonymous = [
+            {'blobId': 'blob_id1', 'URL': 'blob1'},
+        ]
+        actual_results_anonymous = self.blob_service.getBlobs()
+        self.assertCountEqual(actual_results_anonymous, expected_results_anonymous)
+
     def test_updateBlob(self):
         """Test updating a blob."""
         blob_id, _ = self.blob_service.newBlob(self.test_file_storage, USER1)
@@ -89,10 +122,12 @@ class TestPersistentDB(unittest.TestCase):
     def test_getBlobHash(self):
         """Test getting blob hash."""
         blob_id, _ = self.blob_service.newBlob(self.test_file_storage, USER1)
-        hashes = self.blob_service.getBlobHash(blob_id, USER1)
-        # Check if correct hashes are returned
-        self.assertIsInstance(hashes, list)
-        self.assertTrue(any(hash_dict['hash_type'] == 'md5' for hash_dict in hashes))
+        hash_type = 'md5'
+        hash_data = self.blob_service.getBlobHash(blob_id, USER1, hash_type)
+        self.assertIsInstance(hash_data, dict)
+        self.assertEqual(hash_data['hash_type'], hash_type)
+        # Verifying the hash format (it should be a hexdigest string)
+        self.assertTrue(all(c in string.hexdigits for c in hash_data['hexdigest']))
 
     def test_setVisibility(self):
         """Test setting visibility of a blob."""
@@ -141,6 +176,7 @@ class TestPersistentDB(unittest.TestCase):
         # Try to update permissions with incorrect user
         with self.assertRaises(UnauthorizedBlob):
             self.blob_service.updatePermission(blob_id, [USER1], USER2)
+
 
 class MockClient:
     def token_owner(self, auth_token):
@@ -217,23 +253,19 @@ class TestBlobApi(unittest.TestCase):
         response = self.app.get('/api/v1/blob/blob_id')
         self.assertEqual(response.status_code, 200)
 
-
     def test_delete_blob(self):
         response = self.app.delete('/api/v1/blob/blob_id', headers=self.get_auth_header())
         self.assertEqual(response.status_code, 204)
-
 
     def test_delete_blob_unauthorized(self):
         response = self.app.delete('/api/v1/blob/unauthorized_blob_id')
         self.assertEqual(response.status_code, 401)
 
-
-
     def test_update_blob(self):
         data = {'file': (BytesIO(b'new file contents'), 'test_update.txt')}
-        response = self.app.put('/api/v1/blob/blob_id', data=data, content_type='multipart/form-data', headers=self.get_auth_header())
+        response = self.app.put('/api/v1/blob/blob_id', data=data, content_type='multipart/form-data',
+                                headers=self.get_auth_header())
         self.assertEqual(response.status_code, 204)
-
 
     def test_update_blob_unauthorized(self):
         data = {'file': (BytesIO(b'new file contents'), 'test_update.txt')}
@@ -243,6 +275,7 @@ class TestBlobApi(unittest.TestCase):
     def test_get_blob_hash(self):
         response = self.app.get('/api/v1/blob/blob_id/hash')
         self.assertEqual(response.status_code, 200)
+
 
 if __name__ == '__main__':
     unittest.main()
