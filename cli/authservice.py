@@ -67,20 +67,32 @@ class BlobService:
 
     def createBlob(self, localFilename: Union[str, Path]) -> Blob:
         with open(localFilename, 'rb') as file:
-            response = requests.post(f"{self._url_}/create", headers=self._headers_, files={'file': file})
+            response = requests.post(f"{self._url_}/blob", headers=self._headers_, files={'file': file})
         if response.status_code == 200:
             blob_data = response.json()
             return Blob(blobId=blob_data['blobId'], authToken=self._authToken_)
         else:
             raise BlobServiceError("Error creating a new blob.")
 
+    def getBlob(self, blobId: str) -> Blob:
+        response = requests.get(f"{self._url_}/blob/{blobId}", headers=self._headers_)
+        if response.status_code == 200:
+            blob_data = response.json()
+            return Blob(blobId=blob_data['blobId'], authToken=self._authToken_)
+        else:
+            raise BlobServiceError("Error getting the blob.")
+
     def deleteBlob(self, blobId: str) -> None:
-        response = requests.delete(f"{self._url_}/{blobId}", headers=self._headers_)
+        response = requests.delete(f"{self._url_}/blob/{blobId}", headers=self._headers_)
         if response.status_code != 200:
             raise BlobServiceError("Error deleting the blob.")
 
     def getBlobs(self) -> List[str]:
-        pass  # TODO How?
+        response = requests.get(f"{self._url_}/blobs", headers=self._headers_)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise BlobServiceError("Error getting the list of blobs.")
 
     @property
     def service_up(self) -> bool:

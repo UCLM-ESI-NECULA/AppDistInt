@@ -92,6 +92,14 @@ class BlobDB:
         raise_optional_token(blob_data, user)
         return blob_data["URL"]
 
+    def getBlobs(self, user=None):
+        """Retrieve all blobs"""
+        return [
+                {'blobId': blob_id, 'URL': blob_data['URL']}
+                for blob_id, blob_data in self._blobs_.items()
+                if blob_data['public'] or user == blob_data['owner'] or user in blob_data['users']
+        ]
+
     def removeBlob(self, blob_id, user):
         """Remove blob from DB and filesystem using its ID"""
         blob_data = self._exists_(blob_id)

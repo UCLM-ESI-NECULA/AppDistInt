@@ -31,6 +31,7 @@ def routeApp(app, client: Client, BLOBDB):
     # Namespaces
     status_blob = api.namespace('api/v1/status', description='Status of the service')
     ns_blob = api.namespace('api/v1/blob', description='Blob operations')
+    ns_blobs = api.namespace('api/v1/blobs', description='Blobs operations')
 
     file_upload_parser = reqparse.RequestParser()
     file_upload_parser.add_argument('file',
@@ -66,6 +67,11 @@ def routeApp(app, client: Client, BLOBDB):
         'allowed_users': fields.List(fields.String, required=True, description='Allowed Users')
     })
 
+    blob_model = api.model('Blob', {
+        'blobId': fields.String(required=True, description='The blob identifier'),
+        'URL': fields.String(required=True, description='The URL of the blob'),
+    })
+
     def get_client_token():
         auth_token = request.headers.get('AuthToken')
         if auth_token:
@@ -85,6 +91,15 @@ def routeApp(app, client: Client, BLOBDB):
         @api.doc('get status of the service')
         def get(self):
             return make_response('Service running', 200)
+
+    @ns_blobs.route('/')
+    class BlobsCollection(Resource):
+        @api.doc('get_blobs')
+        @api.response(401, 'Unauthorized')
+        @api.marshal_list_with(blob_model)
+        def get(self):
+            """Get all blobs"""
+            return BLOBDB.getBlobs(user=get_optional_client_token())
 
     # Blob endpoints
     @ns_blob.route('/')

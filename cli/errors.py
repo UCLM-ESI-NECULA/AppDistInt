@@ -44,7 +44,7 @@ class InvalidBlob(Exception):
 
 
 class UserNotExists(Exception):
-    '''Raised if request delete a user which not exists'''
+    """Raised if request delete a user which not exists"""
     def __init__(self, token='unknown'):
         self._token_ = token
 
@@ -52,7 +52,7 @@ class UserNotExists(Exception):
         return f'User with Token "{self._token_}" not Found'
 
 class AlreadyLogged(Exception):
-    '''Try to authorize but already logged with other user'''
+    """Try to authorize but already logged with other user"""
     def __init__(self, user='unknown'):
         self._user_ = user
 
