@@ -27,6 +27,7 @@ class BlobService:
             raise BlobServiceError(serviceURL, 'service seems down')
 
     def createBlob(self, localFilename: Union[str, Path]) -> Blob:
+        """Upload a file to the blob service"""
         with open(localFilename, 'rb') as file:
             response = requests.post(f"{self._url_}/api/v1/blob", headers=self._headers_, files={'file': file})
         if response.status_code == 201:
@@ -36,6 +37,7 @@ class BlobService:
             raise BlobServiceError(f"{self._url_}/api/v1/blob", response.content)
 
     def getBlob(self, blobId: str) -> Blob:
+        """Download a file from the blob service"""
         response = requests.get(f"{self._url_}/api/v1/blob/{blobId}", headers=self._headers_)
         if response.status_code == 200:
             content_dispo = response.headers.get('Content-Disposition', '')
@@ -54,11 +56,13 @@ class BlobService:
             raise BlobServiceError(f"{self._url_}/api/v1/blob/{blobId}", response.content)
 
     def deleteBlob(self, blobId: str) -> None:
+        """Delete a blob from the blob service"""
         response = requests.delete(f"{self._url_}/api/v1/blob/{blobId}", headers=self._headers_)
         if response.status_code != 204:
             raise BlobServiceError(f"{self._url_}/api/v1/blob/{blobId}", response.content)
 
     def getBlobs(self) -> List[str]:
+        """Get all blobs from the blob service"""
         response = requests.get(f"{self._url_}/api/v1/blobs", headers=self._headers_)
         if response.status_code == 200:
             return response.json()

@@ -349,12 +349,12 @@ def parse_commandline():
         help='Listening address (default: all interfaces)', dest='address'
     )
     parser.add_argument(
-        '-d', '--db', type=str, default=DEFAULT_BLOB_DB,  # fixme
+        '-d', '--db', type=str, default=DEFAULT_BLOB_DB,
         help='Database to use (default: %(default)s', dest='db_file'
     )
     parser.add_argument(
-        '-s', '--storage', type=str, default=DEFAULT_STORAGE,  # fixme
-        help='Database to use (default: %(default)s', dest='storage'
+        '-s', '--storage', type=str, default=DEFAULT_STORAGE,
+        help='Storage for the blobs to use', dest='storage'
     )
     args = parser.parse_args()
     return args
@@ -366,10 +366,6 @@ def main():
 
     client = Client("http://localhost:3001", check_service=True)
     service = ApiService(user_options.db_file, client, user_options.address, user_options.port)
-    # client.login("valentin", "123")
-    client.login("pablo", "123")
-    print(client._get_token_("valentin", "123"))
-    print(client._get_token_("pablo", "123"))
     try:
         print(f'Starting service on: {service.base_uri}')
         service.start()

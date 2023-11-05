@@ -4,8 +4,6 @@ import cmd
 import getpass
 import logging
 
-__version__ = '1.0'
-
 from cli.blobservice import BlobService, AuthService
 
 _COMMENT_TAG_ = '#'
@@ -228,25 +226,39 @@ class Shell(cmd.Cmd):
                 self.auth_client.logout()
         return True
 
-    def help_connect_to(self):
+    def help_get_blobs(self):
         self.output("""Usage:
-\tconnect_to <API_uri>
+\tget_blobs
+Get the list of blobs""")
+
+    def help_get_blob(self):
+        self.output("""Usage:
+\tget_blob <BLOB_ID>
+Get the blob""")
+
+    def help_delete_blob(self):
+        self.output("""Usage:
+\tdelete_blob <BLOB_ID>
+Delete the blob""")
+
+    def help_create_blob(self):
+        self.output("""Usage:
+\tcreate_blob <PATH>
+Create a blob""")
+    def help_connect_to_auth(self):
+        self.output("""Usage:
+\tconnect_to_auth <AUTH_uri>
+Instance new Auth client with the given URL.""")
+
+    def help_connect_to_blob(self):
+        self.output("""Usage:
+\tconnect_to_blob <BLOB_uri>
 Instance new Blob client with the given URL.""")
 
     def help_disconnect(self):
         self.output("""Usage:
 \tdisconnect
 Delete current client instance.""")
-
-    def help_set_admin_token(self):
-        self.output("""Usage:
-\tset_admin_token [<ADMIN TOKEN>]
-Set (or unset) the administrator token""")
-
-    def help_new_user(self):
-        self.output("""Usage:
-\tnew_user [<USERNAME> [<PASSWORD>]]
-Create new user. If some argument is missing, it will be requested interactively""")
 
     def help_quit(self):
         self.output("""Usage:
