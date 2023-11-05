@@ -13,7 +13,7 @@ from werkzeug.exceptions import Conflict, Unauthorized, BadRequest, NotFound
 
 from blobapi import DEFAULT_STORAGE, DEFAULT_BLOB_DB, DEFAULT_ADDRESS, DEFAULT_PORT, HTTPS_DEBUG_MODE
 from blobapi.blob_service import BlobDB
-from blobapi.errors import ObjectAlreadyExists, ObjectNotFound, UnauthorizedBlob
+from blobapi.errors import ObjectAlreadyExists, ObjectNotFound, UnauthorizedBlob, StatusNotValid
 
 
 def routeApp(app, client: Client, BLOBDB):
@@ -58,8 +58,12 @@ def routeApp(app, client: Client, BLOBDB):
     })
 
     acl_model = api.model('ACL', {
-        'user': fields.String(required=True, description='User ID'),
-        'allowed_users': fields.List(fields.String, description='Allowed Users')
+        'user': fields.String(required=False, description='Allowed user'),
+        'allowed_users': fields.List(fields.String, required=True, description='Allowed Users')
+    })
+
+    acl_model_update = api.model('ACL', {
+        'allowed_users': fields.List(fields.String, required=True, description='Allowed Users')
     })
 
     def get_client_token():
@@ -70,6 +74,10 @@ def routeApp(app, client: Client, BLOBDB):
             except UserNotExists:
                 raise Unauthorized('Invalid AuthToken')
         raise Unauthorized(description="Missing token")
+
+    def get_optional_client_token():
+        auth_token = request.headers.get('AuthToken')
+        return client.token_owner(auth_token) if auth_token else None
 
     # Status endpoints
     @status_blob.route('/')
@@ -103,19 +111,13 @@ def routeApp(app, client: Client, BLOBDB):
 
     @ns_blob.route('/<string:blobId>')
     @api.doc(params={'blobId': 'A Blob ID'})
-    @api.header('AuthToken', 'The authorization token', required=False)
-    @api.doc(security='AuthToken')
     class BlobItem(Resource):
         @api.doc('get_blob')
         @api.response(404, 'Not Found')
         @api.response(401, 'Unauthorized')
         def get(self, blobId):
-            auth_token = request.headers.get('AuthToken')
             try:
-                if not auth_token:
-                    return BLOBDB.getBlob(blobId)
-                else:
-                    return BLOBDB.getBlob(blobId, get_client_token())
+                return BLOBDB.getBlob(blobId, get_optional_client_token())
             except ObjectNotFound as e:
                 raise NotFound(description=str(e))
             except UnauthorizedBlob as e:
@@ -160,47 +162,19 @@ def routeApp(app, client: Client, BLOBDB):
 
     @ns_blob.route('/<string:blobId>/hash')
     @api.doc(params={'blobId': 'A Blob ID'})
-    @api.header('AuthToken', 'The authorization token', required=False)
-    @api.doc(security='AuthToken')
     class BlobHash(Resource):
         @api.doc('get_blob_hash')
+        @api.response(404, 'Not Found')
+        @api.response(401, 'Unauthorized')
         @api.marshal_with(hash_model)
         def get(self, blobId):
             """Get blob hash"""
-            auth_token = request.headers.get('AuthToken')
             try:
-                if not auth_token:
-                    return {'hashes': BLOBDB.getBlobHash(blobId)}
-                else:
-                    return {'hashes': BLOBDB.getBlobHash(blobId, get_client_token())}
+                return {'hashes': BLOBDB.getBlobHash(blobId, get_optional_client_token())}
             except ObjectNotFound as e:
-                return make_response(e, 404)
-
-    @ns_blob.route('/<string:blobId>/visibility')
-    @api.doc(params={'blobId': 'A Blob ID'})
-    class BlobVisibility(Resource):
-        @api.doc('set_blob_visibility')
-        @api.expect(visibility_model)
-        def put(self, blobId):
-            return "", 204
-
-    @ns_blob.route('/<string:blobId>/acl')
-    @api.doc(params={'blobId': 'A Blob ID'})
-    class BlobACL(Resource):
-        @api.doc('add_acl')
-        @api.expect(acl_model)
-        def post(self, blobId):
-            return "", 204
-
-        @api.doc('update_acl')
-        @api.expect(acl_model)
-        def put(self, blobId):
-            return "", 204
-
-        @api.doc('get_acl')
-        @api.marshal_with(acl_model)
-        def get(self, blobId):
-            return {'user': 'user1', 'allowed_users': ['user2', 'user3']}
+                raise NotFound(description=str(e))
+            except UnauthorizedBlob as e:
+                raise Unauthorized(description=str(e))
 
     @ns_blob.route('/<string:blobId>/visibility')
     @api.doc(params={'blobId': 'A Blob ID'})
@@ -217,76 +191,103 @@ def routeApp(app, client: Client, BLOBDB):
         def put(self, blobId):
             """Set the visibility of a blob."""
             args = self.parser.parse_args()
+            if args['public'] is None:
+                raise BadRequest(description="Missing public")
             try:
-                BLOBDB.setVisibility(blobId, args['public'])
+                BLOBDB.setVisibility(blobId, args['public'], get_client_token())
                 return '', 204
             except ObjectNotFound as e:
-                return make_response(e, 404)
-            except Exception as e:
-                return make_response(e, 400)
+                raise NotFound(description=str(e))
+            except StatusNotValid as e:
+                raise BadRequest(description=str(e))
+            except UnauthorizedBlob as e:
+                raise Unauthorized(description=str(e))
 
-        def patch(self, blobId):
-            """Alternative to set the visibility of a blob."""
-            return self.put(blobId)
+        patch = put
 
+    @ns_blob.route('/<string:blobId>/acl')
+    @api.doc(params={'blobId': 'A Blob ID'})
+    class BlobACL(Resource):
 
-#    @ns_blob.route('/<string:blobId>/acl/<string:username>')
-#    class BlobUserACL(Resource):
-#
-#        # For DELETE
-#        @api.doc('remove_user_acl')
-#        @api.response(204, 'User removed from ACL')
-#        @api.response(401, 'Unauthorized')
-#        @api.response(404, 'Blob Not Found or User Not in ACL')
-#        def delete(self, blobId, username):
-#            auth_token = request.headers.get('AuthToken')
-#            if not auth_token or not client.ownerOf(auth_token):
-#                return make_response('Invalid or missing AuthToken', 401)
+        @api.doc('create_acl')
+        @api.expect(acl_model)
+        @api.response(204, 'ACL Created')
+        @api.response(401, 'Unauthorized')
+        @api.response(404, 'Blob Not Found')
+        @api.response(400, 'Bad Request')
+        def post(self, blobId):
+            data = request.json
+            allowed_users = data.get('allowed_users')
 
-#            # Logic to remove 'username' from the allowed_users of blobId in your database
-#            # success = BLOBDB.removeUserFromACL(blobId, username)
+            if allowed_users is not None:
+                if not isinstance(allowed_users, list) or not all(isinstance(item, str) for item in allowed_users):
+                    raise BadRequest(description="Allowed users must be a list of strings")
 
-#            if not success:
-#                return make_response(f'User {username} not found in ACL of Blob {blobId}', 404)
+            user = data.get('user', None)
+            if allowed_users is None and user is None:
+                raise BadRequest(description="Missing allowed_users or user")
 
-#            return '', 204
+            if allowed_users is not None and user is not None:
+                raise BadRequest(description="Cannot use both allowed_users and user")
 
-#    @ns_blob.route('/<string:blobId>/acl')
-#    class BlobACL(Resource):
-#
-#        @api.doc('update_acl')
-#        @api.expect(acl_model)
-#        @api.response(204, 'ACL Updated')
-#        @api.response(401, 'Unauthorized')
-#        @api.response(404, 'Blob Not Found')
-#        def put(self, blobId):
-#            auth_token = request.headers.get('AuthToken')
-#            if not auth_token or not client.(auth_token):
-#                return make_response('Invalid or missing AuthToken', 401)
+            allowed_users = allowed_users if allowed_users is not None else [user]
+            try:
+                BLOBDB.addPermission(blobId, allowed_users, get_client_token())
+            except ObjectNotFound as e:
+                raise NotFound(description=str(e))
+            except UnauthorizedBlob as e:
+                raise Unauthorized(description=str(e))
+            return '', 204
 
-#            data = request.json
-#            allowed_users = data.get('allowed_users', [])
+        @api.doc('update_acl')
+        @api.expect(acl_model_update)
+        @api.response(204, 'ACL Updated')
+        @api.response(401, 'Unauthorized')
+        @api.response(404, 'Blob Not Found')
+        @api.response(400, 'Bad Request')
+        def put(self, blobId):
+            data = request.json
+            allowed_users = data.get('allowed_users', [])
+            if allowed_users is None:
+                raise BadRequest(description="Missing allowed_users")
+            try:
+                BLOBDB.updatePermission(blobId, allowed_users, get_client_token())
+            except ObjectNotFound as e:
+                raise NotFound(description=str(e))
+            except UnauthorizedBlob as e:
+                raise Unauthorized(description=str(e))
+            return '', 204
 
-#            # Logic to update the allowed_users for blobId in your database
-#            # BLOBDB.updateACL(blobId, allowed_users)
-#
-#            return '', 204
-#
-#        patch = put
-#
-#        # For GET
-#        @api.doc('get_acl')
-#        @api.marshal_with(acl_model)
-#        def get(self, blobId):
-#            auth_token = request.headers.get('AuthToken')
-#            if not auth_token or not client.auth_token(auth_token):
-#                return make_response('Invalid or missing AuthToken', 401)
-#
-#            # Logic to retrieve the allowed_users for blobId from your database
-#            # allowed_users = BLOBDB.getACL(blobId)
-#
-#            return {'user': token_manager.ownerOf(auth_token), 'allowed_users': allowed_users}
+        patch = put
 
+        # For GET
+        @api.doc('get_acl')
+        @api.response(404, 'Blob Not Found')
+        @api.response(401, 'Unauthorized')
+        @api.marshal_with(acl_model_update, 200)
+        def get(self, blobId):
+            try:
+                return {'allowed_users': BLOBDB.getPermissions(blobId, get_client_token())}
+            except ObjectNotFound as e:
+                raise NotFound(description=str(e))
+            except UnauthorizedBlob as e:
+                raise Unauthorized(description=str(e))
+
+    @ns_blob.route('/<string:blobId>/acl/<string:username>')
+    class BlobUserACL(Resource):
+
+        @api.doc('remove_user_acl')
+        @api.response(204, 'User removed from ACL')
+        @api.response(401, 'Unauthorized')
+        @api.response(404, 'Blob Not Found or User Not in ACL')
+        def delete(self, blobId, username):
+            try:
+                BLOBDB.removePermission(blobId, username, get_client_token())
+            except UnauthorizedBlob as e:
+                raise Unauthorized(description=str(e))
+            except ObjectNotFound as e:
+                raise NotFound(description=str(e))
+            return '', 204
 
 class ApiService:
     """Wrap all components used by the service"""
@@ -341,7 +342,7 @@ def main():
 
     client = Client("http://localhost:3001", check_service=True)
     service = ApiService(user_options.db_file, client, user_options.address, user_options.port)
-    #client.login("valentin", "123")
+    # client.login("valentin", "123")
     client.login("pablo", "123")
     print(client._get_token_("valentin", "123"))
     print(client._get_token_("pablo", "123"))

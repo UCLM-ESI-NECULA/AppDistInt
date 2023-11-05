@@ -13,6 +13,15 @@ class UnauthorizedBlob(Exception):
     def __str__(self):
         return f'Authorization error for user "{self._user_}": {self._reason_}'
 
+class StatusNotValid(Exception):
+    """Status error"""
+
+    def __init__(self, item='unknown', reason='unknown'):
+        self._item_ = item
+        self._reason_ = reason
+    def __str__(self):
+        return f'Status error for blob "{self._item_}": {self._reason_}'
+
 
 class ObjectNotFound(Exception):
     """Object not found error"""
