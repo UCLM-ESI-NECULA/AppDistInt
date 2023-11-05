@@ -1,13 +1,17 @@
 import unittest
 import tempfile
 import os
+from io import BytesIO
 from pathlib import Path
 
-from blobapi import DEFAULT_ENCODING
+from flask import Flask
+
+from blobapi import DEFAULT_ENCODING, DEFAULT_STORAGE
 from blobapi.blob_service import BlobDB
 from werkzeug.datastructures import FileStorage
 
 from blobapi.errors import UnauthorizedBlob, ObjectNotFound
+from blobapi.server import routeApp
 
 # Constants defined for the purpose of testing
 USER1 = 'test_user1'
@@ -29,6 +33,11 @@ class TestPersistentDB(unittest.TestCase):
         self.test_file_storage = FileStorage(stream=self.test_file,
                                              filename=self.test_file.name,
                                              content_type='text/plain')
+
+    def tearDown(self):
+        """Cleanup the temporary directory and file after tests."""
+        os.system('rm -rf ' + DEFAULT_STORAGE)
+        self.workspace.cleanup()
 
     def test_newBlob(self):
         """Test the creation of a new blob."""
@@ -133,6 +142,107 @@ class TestPersistentDB(unittest.TestCase):
         with self.assertRaises(UnauthorizedBlob):
             self.blob_service.updatePermission(blob_id, [USER1], USER2)
 
+class MockClient:
+    def token_owner(self, auth_token):
+        return 'user_id'
+
+    def login(self, username, password):
+        return True
+
+
+class MockBlobDB:
+    def newBlob(self, file, token):
+        return 'blob_id', 'blob_url'
+
+    def getBlob(self, blob_id, token):
+        return 'test_file'
+
+    def removeBlob(self, blob_id, token):
+        pass
+
+    def updateBlob(self, blob_id, file, token):
+        pass
+
+    def getBlobHash(self, blob_id, token):
+        return [{'hash_type': 'md5', 'hexdigest': 'hash_value'}]
+
+    def setVisibility(self, blob_id, public, token):
+        pass
+
+    def addPermission(self, blob_id, allowed_users, token):
+        pass
+
+    def updatePermission(self, blob_id, allowed_users, token):
+        pass
+
+    def getPermissions(self, blob_id, token):
+        return ['user1', 'user2']
+
+    def removePermission(self, blob_id, username, token):
+        pass
+
+
+class TestBlobApi(unittest.TestCase):
+    AUTH_TOKEN = 'test-token'
+
+    def get_auth_header(self):
+        return {'AuthToken': self.AUTH_TOKEN}
+
+    def setUp(self):
+        self.client = MockClient()
+        self.blobdb = MockBlobDB()
+
+        app = Flask(__name__)
+        routeApp(app, self.client, self.blobdb)
+        app.testing = True
+        self.app = app.test_client()
+
+    def test_get_status(self):
+        response = self.app.get('/api/v1/status/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_create_blob(self):
+        data = {'file': (BytesIO(b'Content'), 'test.txt')}
+        response = self.app.post('/api/v1/blob/', data=data,
+                                 content_type='multipart/form-data',
+                                 headers=self.get_auth_header())
+        self.assertEqual(response.status_code, 201)
+
+    def test_create_blob_without_file(self):
+        data = {}
+        response = self.app.post('/api/v1/blob/', data=data, content_type='multipart/form-data')
+        self.assertEqual(response.status_code, 400)
+
+    def test_get_blob(self):
+        response = self.app.get('/api/v1/blob/blob_id')
+        self.assertEqual(response.status_code, 200)
+
+
+    def test_delete_blob(self):
+        response = self.app.delete('/api/v1/blob/blob_id', headers=self.get_auth_header())
+        self.assertEqual(response.status_code, 204)
+
+
+    def test_delete_blob_unauthorized(self):
+        response = self.app.delete('/api/v1/blob/unauthorized_blob_id')
+        self.assertEqual(response.status_code, 401)
+
+
+
+    def test_update_blob(self):
+        data = {'file': (BytesIO(b'new file contents'), 'test_update.txt')}
+        response = self.app.put('/api/v1/blob/blob_id', data=data, content_type='multipart/form-data', headers=self.get_auth_header())
+        self.assertEqual(response.status_code, 204)
+
+
+    def test_update_blob_unauthorized(self):
+        data = {'file': (BytesIO(b'new file contents'), 'test_update.txt')}
+        response = self.app.put('/api/v1/blob/unauthorized_blob_id', data=data, content_type='multipart/form-data')
+        self.assertEqual(response.status_code, 401)
+
+    def test_get_blob_hash(self):
+        response = self.app.get('/api/v1/blob/blob_id/hash')
+        self.assertEqual(response.status_code, 200)
 
 if __name__ == '__main__':
     unittest.main()
