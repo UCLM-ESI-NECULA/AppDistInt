@@ -199,7 +199,7 @@ class MockBlobDB:
     def updateBlob(self, blob_id, file, token):
         pass
 
-    def getBlobHash(self, blob_id, token):
+    def getBlobHash(self, blob_id, type, token):
         return [{'hash_type': 'md5', 'hexdigest': 'hash_value'}]
 
     def setVisibility(self, blob_id, public, token):
@@ -273,7 +273,7 @@ class TestBlobApi(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
 
     def test_get_blob_hash(self):
-        response = self.app.get('/api/v1/blob/blob_id/hash')
+        response = self.app.get('/api/v1/blob/blob_id/hash?hash_type=md5', headers=self.get_auth_header())
         self.assertEqual(response.status_code, 200)
 
 
