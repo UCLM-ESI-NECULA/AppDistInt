@@ -1,18 +1,9 @@
-#!/usr/bin/env python3
-
 """Rest Api errors"""
-
-# Exit codes
-
-NO_ERROR = 0
-CMDCLI_ERROR = 1
-CONNECTION_ERROR = 2
-UNAUTHORIZED = 3
 
 
 # Custom exceptions
 
-class Unauthorized(Exception):
+class UnauthorizedBlob(Exception):
     """Authorization error"""
 
     def __init__(self, user='unknown', reason='unknown'):
@@ -21,6 +12,15 @@ class Unauthorized(Exception):
 
     def __str__(self):
         return f'Authorization error for user "{self._user_}": {self._reason_}'
+
+class StatusNotValid(Exception):
+    """Status error"""
+
+    def __init__(self, item='unknown', reason='unknown'):
+        self._item_ = item
+        self._reason_ = reason
+    def __str__(self):
+        return f'Status error for blob "{self._item_}": {self._reason_}'
 
 
 class ObjectNotFound(Exception):
@@ -41,10 +41,3 @@ class ObjectAlreadyExists(Exception):
 
     def __str__(self):
         return f'Trying to create already created item "{self._item_}"'
-
-
-class MissingMandatoryArgument(Exception):
-    """Some required argument is missing"""
-
-    def __str__(self):
-        return 'Mandatory argument is required but not provided'
