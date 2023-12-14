@@ -4,13 +4,13 @@ import argparse
 import logging
 import sys
 
-from adiauthcli import Client
-from adiauthcli.errors import UserNotExists
 from flask import Flask, make_response, request, send_file
 from flask_restx import Api, Resource, fields, reqparse
 from werkzeug.datastructures.file_storage import FileStorage
 from werkzeug.exceptions import Conflict, Unauthorized, BadRequest, NotFound
 
+from authClient.client import Client
+from authClient.errors import UserNotExists
 from blobapi import DEFAULT_STORAGE, DEFAULT_BLOB_DB, DEFAULT_ADDRESS, DEFAULT_PORT, HTTPS_DEBUG_MODE
 from blobapi.blob_service import BlobDB
 from blobapi.errors import ObjectAlreadyExists, ObjectNotFound, UnauthorizedBlob, StatusNotValid

@@ -1,6 +1,6 @@
 """RestFS errors"""
 
-## Exit codes
+# Exit codes
 
 NO_ERROR = 0
 CMDCLI_ERROR = 1
