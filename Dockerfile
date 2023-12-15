@@ -1,4 +1,4 @@
-FROM arm64v8/python
+FROM python:slim
 
 WORKDIR /usr/src/app
 
@@ -14,7 +14,8 @@ RUN useradd -m user
 RUN chown -R user:user /usr/src/app
 
 USER user
-# Make port 3002 available to the world outside this container
+
+# Expose port 3002
 EXPOSE 3002
 
 # Define default environment variable
