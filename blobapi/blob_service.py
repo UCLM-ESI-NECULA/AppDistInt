@@ -79,7 +79,7 @@ class BlobDB:
         file.save(url)
 
         # Save blob info to the database
-        self._blobs_[blob_id] = {"URL": url, "public": False, "users": [], "owner": user}
+        self._blobs_[blob_id] = {"URL": url, "public": True, "users": [], "owner": user}
         self._commit_()
 
         return blob_id, url
