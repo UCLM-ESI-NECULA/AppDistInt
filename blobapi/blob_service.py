@@ -1,4 +1,3 @@
-
 """Blob DB implementation."""
 
 import hashlib
@@ -31,7 +30,7 @@ def raise_user_no_owner(blob_data, user):
 
 def raise_optional_token(blob_data, user):
     """Raise an exception if the user is not the owner of the blob or has no permissions for it"""
-    if not blob_data["public"] and user != blob_data["owner"] and (not user or user not in blob_data["users"]):
+    if not blob_data["public"] and user != blob_data["owner"] and user not in blob_data["users"]:
         raise UnauthorizedBlob(user=user, reason="User has no permissions for this blob")
 
 
@@ -94,11 +93,11 @@ class BlobDB:
 
     def getBlobs(self, user=None):
         """Retrieve all blobs"""
-        return [
-                {'blobId': blob_id, 'URL': blob_data['URL']}
-                for blob_id, blob_data in self._blobs_.items()
-                if blob_data['public'] or user == blob_data['owner'] or user in blob_data['users']
-        ]
+        return {'blobs': [
+            blob_id
+            for blob_id, blob_data in self._blobs_.items()
+            if blob_data['public'] or user == blob_data['owner'] or user in blob_data['users']
+        ]}
 
     def removeBlob(self, blob_id, user):
         """Remove blob from DB and filesystem using its ID"""
@@ -147,10 +146,12 @@ class BlobDB:
         """Change the visibility of a blob."""
         self._exists_(blob_id)
         raise_user_no_owner(self._blobs_[blob_id], user)
-        #if self._blobs_[blob_id]['public'] != public:
-        #    self._blobs_[blob_id]['public'] = public
-        #else:
-        #    raise StatusNotValid(blob_id, f'Blob is already {"public" if public else "private"}')
+        self._blobs_[blob_id]['public'] = public
+        if self._blobs_[blob_id]['public'] != public:
+            self._blobs_[blob_id]['public'] = public
+        else:
+            logging.warning(f'Blob {blob_id} is already {"public" if public else "private"}')
+            # raise StatusNotValid(blob_id, f'Blob is already {"public" if public else "private"}')
         self._commit_()
 
     def getPermissions(self, blob_id, owner):

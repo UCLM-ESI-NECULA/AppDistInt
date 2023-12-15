@@ -39,10 +39,14 @@ def routeApp(app, client: Client, BLOBDB):
                                     required=True,
                                     help='Upload the blob file')
 
-    # Models for serialization
+    # Model for individual blob items
     blob_model = api.model('Blob', {
         'blobId': fields.String(required=True, description='Blob ID'),
         'URL': fields.String(required=True, description='Blob URL')
+    })
+
+    blobs_model = api.model('Blobs', {
+        'blobs': fields.List(fields.String, description="A list of blob IDs")
     })
 
     hash_arg_parser = api.parser()
@@ -60,11 +64,6 @@ def routeApp(app, client: Client, BLOBDB):
 
     acl_model_update = api.model('ACL', {
         'allowed_users': fields.List(fields.String, required=True, description='Allowed Users')
-    })
-
-    blob_model = api.model('Blob', {
-        'blobId': fields.String(required=True, description='The blob identifier'),
-        'URL': fields.String(required=True, description='The URL of the blob'),
     })
 
     def get_client_token():
@@ -87,17 +86,17 @@ def routeApp(app, client: Client, BLOBDB):
         def get(self):
             return make_response('Service running', 200)
 
-    @ns_blobs.route('/')
+    @ns_blobs.route('')
     class BlobsCollection(Resource):
         @api.doc('get_blobs')
         @api.response(401, 'Unauthorized')
-        @api.marshal_list_with(blob_model)
+        @api.marshal_list_with(blobs_model)
         def get(self):
             """Get all blobs"""
             return BLOBDB.getBlobs(user=get_optional_client_token())
 
     # Blob endpoints
-    @ns_blob.route('/')
+    @ns_blob.route('')
     class BlobCollection(Resource):
         @api.doc('create_blob')
         @api.expect(file_upload_parser)
