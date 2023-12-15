@@ -10,12 +10,13 @@ from cli.errors import BlobServiceError
 # I don't understand what is the purpose of this class without the api url
 
 
+
 class Blob:
     allowedUsers = []
     isPrivate = False
     md5 = ''
     sha256 = ''
-    serviceURL = 'localhost:3002'
+    serviceURL = '127.0.0.1:3002'
 
     def __init__(self, blobId: str, authToken: Optional[str] = None):
         self._url_ = f"{self.serviceURL}/api/v1/blob"

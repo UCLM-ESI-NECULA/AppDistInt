@@ -7,7 +7,7 @@ from pathlib import Path
 
 from flask import Flask
 
-from blobapi import DEFAULT_STORAGE
+from blobapi import FILE_STORAGE
 from blobapi.blob_service import BlobDB
 from werkzeug.datastructures import FileStorage
 
@@ -37,7 +37,7 @@ class TestPersistentDB(unittest.TestCase):
 
     def tearDown(self):
         """Cleanup the temporary directory and file after tests."""
-        os.system('rm -rf ' + DEFAULT_STORAGE)
+        os.system('rm -rf ' + FILE_STORAGE)
         self.workspace.cleanup()
 
     def test_newBlob(self):

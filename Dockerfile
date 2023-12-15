@@ -14,7 +14,7 @@ USER user
 # Make port 3002 available to the world outside this container
 EXPOSE 3002
 
-# Define environment variable
+# Define default environment variable
 ENV BLOB_SERVICE_PORT=3002
 
 # Run the application when the container launches

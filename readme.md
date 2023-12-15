@@ -25,4 +25,4 @@ The Shell can be used with interactive commands or can be used a Script file.
 To use the interactive shell, just run the cli.py file, and the shell will start.
 To use the script file use the option SCRIPT and the path of the script file.
 
-All the endpoints are documented with swagger, and can be accessed in the url: http://localhost:3002 or other port if you change it.
+All the endpoints are documented with swagger, and can be accessed in the url: http://127.0.0.1:3002 or other port if you change it.

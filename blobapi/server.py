@@ -12,8 +12,7 @@ from werkzeug.exceptions import Conflict, Unauthorized, BadRequest, NotFound
 from .blob_service import BlobDB
 from .errors import ObjectAlreadyExists, ObjectNotFound, UnauthorizedBlob, StatusNotValid, UserNotExists
 from .auth_client import Client
-from . import DEFAULT_STORAGE, DEFAULT_BLOB_DB, DEFAULT_ADDRESS, DEFAULT_PORT, HTTPS_DEBUG_MODE
-
+from . import FILE_STORAGE, BLOB_DB, BLOB_SERVICE_ADDRESS, BLOB_SERVICE_PORT, HTTPS_DEBUG_MODE, AUTH_PORT, AUTH_ADDRESS
 
 def routeApp(app, client: Client, BLOBDB):
     """Route API REST to web"""
@@ -315,7 +314,7 @@ def routeApp(app, client: Client, BLOBDB):
 class ApiService:
     """Wrap all components used by the service"""
 
-    def __init__(self, db_file, client, host=DEFAULT_ADDRESS, port=DEFAULT_PORT):
+    def __init__(self, db_file, client, host=BLOB_SERVICE_ADDRESS, port=BLOB_SERVICE_PORT):
         self._blobdb_ = BlobDB(db_file)
         self._client_ = client
         self._host_ = host
@@ -340,19 +339,19 @@ def parse_commandline():
     """Parse command line"""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        '-p', '--port', type=int, default=DEFAULT_PORT,
+        '-p', '--port', type=int, default=BLOB_SERVICE_PORT,
         help='Listening port (default: %(default)s)', dest='port'
     )
     parser.add_argument(
-        '-l', '--listening', type=str, default=DEFAULT_ADDRESS,
+        '-l', '--listening', type=str, default=BLOB_SERVICE_ADDRESS,
         help='Listening address (default: all interfaces)', dest='address'
     )
     parser.add_argument(
-        '-d', '--db', type=str, default=DEFAULT_BLOB_DB,
+        '-d', '--db', type=str, default=BLOB_DB,
         help='Database to use (default: %(default)s', dest='db_file'
     )
     parser.add_argument(
-        '-s', '--storage', type=str, default=DEFAULT_STORAGE,
+        '-s', '--storage', type=str, default=FILE_STORAGE,
         help='Storage for the blobs to use', dest='storage'
     )
     args = parser.parse_args()
@@ -362,8 +361,8 @@ def parse_commandline():
 def main():
     """Entry point for the API"""
     user_options = parse_commandline()
-
-    client = Client("http://localhost:3001", check_service=True)
+    client = Client(f'http://{AUTH_ADDRESS}:{AUTH_PORT}', check_service=True)
+    print(f'http://{AUTH_ADDRESS}:{AUTH_PORT}')
     service = ApiService(user_options.db_file, client, user_options.address, user_options.port)
     try:
         print(f'Starting service on: {service.base_uri}')
