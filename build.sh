@@ -1,2 +1,2 @@
 #!/bin/bash
-docker build -t blob-api-image .
+docker build --no-cache --progress=plain -t blob-api-image .

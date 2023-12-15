@@ -12,8 +12,8 @@ from typing import Optional
 
 import requests
 
-from authClient.errors import ServiceError, Unauthorized, AlreadyLogged, UserAlreadyExists, UserNotExists
-from authClient import DEFAULT_ENCODING, USER, HASH_PASS, TOKEN, ADMIN, ADMIN_TOKEN, USER_TOKEN
+from blobapi import ADMIN, USER_TOKEN, ADMIN_TOKEN, USER, HASH_PASS, DEFAULT_ENCODING, TOKEN
+from blobapi.errors import Unauthorized, ServiceError, UserAlreadyExists, UserNotExists, AlreadyLogged
 
 CONTENT_JSON = {'Content-Type': 'application/json'}
 
@@ -169,7 +169,7 @@ class Client:
 
     def user_exists(self, user: str) -> bool:
         """Check if user exists or not"""
-        if (user == ADMIN):
+        if user == ADMIN:
             if not self.administrator:
                 raise Unauthorized(user="<not administrator>", reason="administrator token not provided")
             header = self._auth_header_
