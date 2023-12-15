@@ -18,4 +18,4 @@ EXPOSE 3002
 ENV BLOB_SERVICE_PORT=3002
 
 # Run the application when the container launches
-CMD ["python", "blobapi/server.py"]
+CMD ["python", "-m",  "blobapi.server"]

@@ -10,8 +10,8 @@ from pathlib import Path
 
 from werkzeug.utils import secure_filename
 
-from blobapi import DEFAULT_ENCODING, DEFAULT_STORAGE
-from blobapi.errors import ObjectAlreadyExists, ObjectNotFound, UnauthorizedBlob, StatusNotValid
+from . import DEFAULT_ENCODING
+from .errors import ObjectAlreadyExists, ObjectNotFound, UnauthorizedBlob, StatusNotValid
 
 _WRN = logging.warning
 

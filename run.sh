@@ -14,9 +14,10 @@ if [ ! -d "$BLOB_STORAGE_FOLDER" ]; then
     mkdir -p "$BLOB_STORAGE_FOLDER"
 fi
 
+#--rm
 
 # Run the container
-docker run --rm --name blob-api-container \
+docker run --name blob-api-container \
   -p "${BLOB_SERVICE_PORT:-3002}":3002 \
   -v "$BLOB_STORAGE_FOLDER":/data \
   --cpus="1.0" --memory="2g" \

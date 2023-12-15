@@ -9,10 +9,10 @@ from flask_restx import Api, Resource, fields, reqparse
 from werkzeug.datastructures.file_storage import FileStorage
 from werkzeug.exceptions import Conflict, Unauthorized, BadRequest, NotFound
 
-from blobapi.blob_service import BlobDB
-from blobapi.errors import ObjectAlreadyExists, ObjectNotFound, UnauthorizedBlob, StatusNotValid, UserNotExists
-from blobapi import DEFAULT_STORAGE, DEFAULT_BLOB_DB, DEFAULT_ADDRESS, DEFAULT_PORT, HTTPS_DEBUG_MODE
-from blobapi.auth_client import Client
+from .blob_service import BlobDB
+from .errors import ObjectAlreadyExists, ObjectNotFound, UnauthorizedBlob, StatusNotValid, UserNotExists
+from .auth_client import Client
+from . import DEFAULT_STORAGE, DEFAULT_BLOB_DB, DEFAULT_ADDRESS, DEFAULT_PORT, HTTPS_DEBUG_MODE
 
 
 def routeApp(app, client: Client, BLOBDB):

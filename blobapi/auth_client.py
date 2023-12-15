@@ -12,8 +12,8 @@ from typing import Optional
 
 import requests
 
-from blobapi import ADMIN, USER_TOKEN, ADMIN_TOKEN, USER, HASH_PASS, DEFAULT_ENCODING, TOKEN
-from blobapi.errors import Unauthorized, ServiceError, UserAlreadyExists, UserNotExists, AlreadyLogged
+from . import ADMIN, USER_TOKEN, ADMIN_TOKEN, USER, HASH_PASS, DEFAULT_ENCODING, TOKEN
+from .errors import Unauthorized, ServiceError, UserAlreadyExists, UserNotExists, AlreadyLogged
 
 CONTENT_JSON = {'Content-Type': 'application/json'}
 
