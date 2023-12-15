@@ -7,7 +7,7 @@ app = Flask(__name__)
 load_dotenv()
 
 AUTH_PORT=os.getenv('AUTH_PORT', '3001')
-AUTH_ADDRESS=os.getenv('AUTH_ADDRESS', '127.0.0.1')
+MOCK_ADDRESS=os.getenv('MOCK_ADDRESS', '127.0.0.1')
 @app.route('/api/v1/status', methods=['GET'])
 def status():
     return '', 200
@@ -27,4 +27,4 @@ def token(token):
         return '', 404
 
 if __name__ == '__main__':
-    app.run(host=AUTH_ADDRESS, port=int(AUTH_PORT))
+    app.run(host=MOCK_ADDRESS, port=int(AUTH_PORT))

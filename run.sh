@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Check if the container is already running
 if [ "$(docker ps -q -f name=blob-api-container)" ]; then
     echo "Container is already running."
     exit 1
@@ -14,11 +15,9 @@ if [ ! -d "$BLOB_STORAGE_FOLDER" ]; then
     mkdir -p "$BLOB_STORAGE_FOLDER"
 fi
 
-#--rm
-
-# Run the container
-docker run --name blob-api-container \
-  -p "${BLOB_SERVICE_PORT:-3002}":3002 \
-  -v "$BLOB_STORAGE_FOLDER":/data \
+# Run the Docker container with volume mapping
+docker run --rm --name blob-api-container \
+  -p "${BLOB_SERVICE_PORT:-3002}:3002" \
+  -v "$BLOB_STORAGE_FOLDER":/usr/src/app/storage \
   --cpus="1.0" --memory="2g" \
   blob-api-image

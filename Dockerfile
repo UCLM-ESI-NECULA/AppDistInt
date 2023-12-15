@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM arm64v8/python
 
 WORKDIR /usr/src/app
 
@@ -9,8 +9,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Create a non-root user and switch to it
 RUN useradd -m user
-USER user
 
+# Set permissions for the non-root user
+RUN chown -R user:user /usr/src/app
+
+USER user
 # Make port 3002 available to the world outside this container
 EXPOSE 3002
 

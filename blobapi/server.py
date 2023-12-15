@@ -3,6 +3,7 @@
 import argparse
 import json
 import logging
+import os
 import sys
 
 from flask import Flask, make_response, request, send_file
@@ -127,7 +128,7 @@ def routeApp(app, client: Client, BLOBDB):
         def get(self, blobId):
             try:
                 file_path = BLOBDB.getBlob(blobId, get_optional_client_token())
-                return send_file(file_path, as_attachment=True)
+                return send_file(os.path.join(os.getcwd(), file_path), as_attachment=True)
             except ObjectNotFound as e:
                 raise NotFound(description=str(e))
             except UnauthorizedBlob as e:
