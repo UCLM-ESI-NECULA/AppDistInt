@@ -12,11 +12,8 @@ from typing import Optional
 
 import requests
 
-from . import ADMIN, USER_TOKEN, ADMIN_TOKEN, USER, HASH_PASS, DEFAULT_ENCODING, TOKEN
-from .errors import Unauthorized, ServiceError, UserAlreadyExists, UserNotExists, AlreadyLogged
-
-CONTENT_JSON = {'Content-Type': 'application/json'}
-
+from blobapi import ADMIN, USER_TOKEN, ADMIN_TOKEN, USER, HASH_PASS, DEFAULT_ENCODING, TOKEN, CONTENT_JSON
+from blobapi.errors import Unauthorized, ServiceError, UserAlreadyExists, UserNotExists, AlreadyLogged
 
 class Client:
     """authClient implementation"""
@@ -67,7 +64,7 @@ class Client:
     def service_up(self) -> bool:
         """Return is service is running or not"""
         try:
-            result = requests.get(f'{self._url_}/v1/status', verify=False)
+            result = requests.get(f'{self._url_}/api/v1/status', verify=False)
             return result.status_code == 200
         except Exception as error:
             return False
@@ -90,7 +87,7 @@ class Client:
             raise Unauthorized(user=user, reason='Cannot refresh token without login')
         passwordHash = hashlib.sha256(password.encode(DEFAULT_ENCODING)).hexdigest()
         data = json.dumps({USER: user, HASH_PASS: passwordHash})
-        result = requests.post(f'{self._url_}/v1/user/login', data=data, headers=CONTENT_JSON, verify=False)
+        result = requests.post(f'{self._url_}/api/v1/user/login', data=data, headers=CONTENT_JSON, verify=False)
         if result.status_code != 200:
             raise Unauthorized(user=user, reason=result.content.decode(DEFAULT_ENCODING))
         result = json.loads(result.content.decode(DEFAULT_ENCODING))
@@ -126,7 +123,7 @@ class Client:
         data = json.dumps({USER: user, HASH_PASS: passwordHash})
         headers = copy.copy(CONTENT_JSON)
         headers.update(self._auth_header_)
-        result = requests.put(f'{self._url_}/v1/user/{user}', data=data, headers=headers, verify=False)
+        result = requests.put(f'{self._url_}/api/v1/user/{user}', data=data, headers=headers, verify=False)
         if result.status_code != 201:
             if result.status_code == 401:
                 raise Unauthorized(self._user_, reason=result.content.decode(DEFAULT_ENCODING))
@@ -139,12 +136,12 @@ class Client:
         passwordHash = hashlib.sha256(password.encode(DEFAULT_ENCODING)).hexdigest()
         data = json.dumps({USER: user, HASH_PASS: passwordHash})
         if self.administrator:
-            result = requests.post(f'{self._url_}/v1/user/{user}', data=data, headers=self._auth_header_, verify=False)
+            result = requests.post(f'{self._url_}/api/v1/user/{user}', data=data, headers=self._auth_header_, verify=False)
         else:
             expected_user = self.token_owner(self._token_)
             if expected_user != user:
                 raise Unauthorized(user=self._user_, reason="User cannot change password of other users")
-            result = requests.post(f'{self._url_}/v1/user/{user}', data=data, headers=self._user_header_, verify=False)
+            result = requests.post(f'{self._url_}/api/v1/user/{user}', data=data, headers=self._user_header_, verify=False)
 
         if result.status_code != 202:
             if result.status_code == 404:
@@ -159,7 +156,7 @@ class Client:
             raise Unauthorized(user="<not administrator>", reason="administrator token not provided")
         if not self.user_exists(user):
             raise UserNotExists(user)
-        result = requests.delete(f'{self._url_}/v1/user/{user}', headers=self._auth_header_, verify=False)
+        result = requests.delete(f'{self._url_}/api/v1/user/{user}', headers=self._auth_header_, verify=False)
         if result.status_code != 204:
             if result.status_code == 401:
                 raise Unauthorized(self._user_, reason=result.content.decode(DEFAULT_ENCODING))
@@ -180,7 +177,7 @@ class Client:
 
     def token_owner(self, token: str) -> str:
         """Check the owner of a token"""
-        result = requests.get(f'{self._url_}/v1/token/{token}', verify=False)
+        result = requests.get(f'{self._url_}/api/v1/token/{token}', verify=False)
         if result.status_code != 200:
             raise UserNotExists(f'Owner of token #{token}')
         result = json.loads(result.content.decode(DEFAULT_ENCODING))

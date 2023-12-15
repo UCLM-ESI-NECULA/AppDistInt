@@ -10,8 +10,8 @@ from pathlib import Path
 
 from werkzeug.utils import secure_filename
 
-from . import DEFAULT_ENCODING
-from .errors import ObjectAlreadyExists, ObjectNotFound, UnauthorizedBlob, StatusNotValid
+from blobapi import DEFAULT_ENCODING, FILE_STORAGE
+from blobapi.errors import ObjectAlreadyExists, ObjectNotFound, UnauthorizedBlob, StatusNotValid
 
 _WRN = logging.warning
 
@@ -63,7 +63,7 @@ class BlobDB:
         if not file:
             raise ValueError("File not provided")
         filename = secure_filename(file.filename)
-        url = os.path.join(DEFAULT_STORAGE, filename)
+        url = os.path.join(FILE_STORAGE, filename)
         blob_id = str(uuid.uuid4())
 
         storage_path = os.path.dirname(url)
@@ -115,7 +115,7 @@ class BlobDB:
         raise_user_no_owner(self._blobs_[blob_id], user)
 
         filename = secure_filename(new_file.filename)
-        url = os.path.join(DEFAULT_STORAGE, filename)
+        url = os.path.join(FILE_STORAGE, filename)
 
         # Check for potential conflicts
         if url in [blob["URL"] for blob in self._blobs_.values()] and self._blobs_[blob_id]["URL"] != url:
@@ -129,7 +129,7 @@ class BlobDB:
         self._blobs_[blob_id]["URL"] = url
         self._commit_()
 
-    def getBlobHash(self, blob_id, user, hash_type=None):
+    def getBlobHash(self, blob_id, user, hash_type='md5'):
         """Compute the hash for the blob based on a specified hash type."""
         blob_data = self._exists_(blob_id)
         raise_optional_token(blob_data, user)
@@ -147,10 +147,10 @@ class BlobDB:
         """Change the visibility of a blob."""
         self._exists_(blob_id)
         raise_user_no_owner(self._blobs_[blob_id], user)
-        if self._blobs_[blob_id]['public'] != public:
-            self._blobs_[blob_id]['public'] = public
-        else:
-            raise StatusNotValid(blob_id, f'Blob is already {"public" if public else "private"}')
+        #if self._blobs_[blob_id]['public'] != public:
+        #    self._blobs_[blob_id]['public'] = public
+        #else:
+        #    raise StatusNotValid(blob_id, f'Blob is already {"public" if public else "private"}')
         self._commit_()
 
     def getPermissions(self, blob_id, owner):

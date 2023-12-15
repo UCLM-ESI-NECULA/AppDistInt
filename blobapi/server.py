@@ -1,6 +1,7 @@
 """API blobapi"""
 
 import argparse
+import json
 import logging
 import sys
 
@@ -9,10 +10,10 @@ from flask_restx import Api, Resource, fields, reqparse
 from werkzeug.datastructures.file_storage import FileStorage
 from werkzeug.exceptions import Conflict, Unauthorized, BadRequest, NotFound
 
-from .blob_service import BlobDB
-from .errors import ObjectAlreadyExists, ObjectNotFound, UnauthorizedBlob, StatusNotValid, UserNotExists
-from .auth_client import Client
-from . import FILE_STORAGE, BLOB_DB, BLOB_SERVICE_ADDRESS, BLOB_SERVICE_PORT, HTTPS_DEBUG_MODE, AUTH_PORT, AUTH_ADDRESS
+from blobapi.blob_service import BlobDB
+from blobapi.errors import ObjectAlreadyExists, ObjectNotFound, UnauthorizedBlob, StatusNotValid, UserNotExists
+from blobapi.auth_client import Client
+from blobapi import FILE_STORAGE, BLOB_DB, BLOB_SERVICE_ADDRESS, BLOB_SERVICE_PORT, HTTPS_DEBUG_MODE, AUTH_PORT, AUTH_ADDRESS
 
 def routeApp(app, client: Client, BLOBDB):
     """Route API REST to web"""
@@ -173,9 +174,6 @@ def routeApp(app, client: Client, BLOBDB):
     @ns_blob.route('/<string:blobId>/hash')
     @api.doc(params={'blobId': 'A Blob ID'})
     class BlobHash(Resource):
-        hash_arg_parser = api.parser()
-        hash_arg_parser.add_argument('hash_type', type=str, required=True, location='args',
-                                     help='Type of hash to retrieve')
 
         @api.doc('get_blob_hash')
         @api.expect(hash_arg_parser)
@@ -183,12 +181,8 @@ def routeApp(app, client: Client, BLOBDB):
         @api.response(401, 'Unauthorized')
         def get(self, blobId):
             """Get blob hash"""
-            args = hash_arg_parser.parse_args()
-            hash_type = args.get('hash_type')
-            if hash_type is None:
-                raise BadRequest(description="Missing hash_type")
             try:
-                hash_data = BLOBDB.getBlobHash(blobId, get_optional_client_token(), hash_type)
+                hash_data = BLOBDB.getBlobHash(blobId, get_optional_client_token())
                 return hash_data
             except ValueError as e:
                 raise BadRequest(description=str(e))
@@ -200,18 +194,20 @@ def routeApp(app, client: Client, BLOBDB):
     @ns_blob.route('/<string:blobId>/visibility')
     @api.doc(params={'blobId': 'A Blob ID'})
     class BlobVisibility(Resource):
-        parser = reqparse.RequestParser()
-        parser.add_argument('public', type=bool, required=True, help='Set visibility to public or private')
 
         @api.doc('set_blob_visibility')
         @api.response(204, 'Visibility Updated')
         @api.response(401, 'Unauthorized')
         @api.response(404, 'Blob Not Found')
         @api.response(400, 'Bad Request')
-        @api.expect(visibility_model, validate=True)
+        #@api.expect(visibility_model, validate=True)
         def put(self, blobId):
             """Set the visibility of a blob."""
-            args = self.parser.parse_args()
+            try:
+                args = json.loads(request.get_data())
+            except json.JSONDecodeError:
+                raise BadRequest(description="Invalid JSON")
+
             if args['public'] is None:
                 raise BadRequest(description="Missing public")
             try:
@@ -362,7 +358,6 @@ def main():
     """Entry point for the API"""
     user_options = parse_commandline()
     client = Client(f'http://{AUTH_ADDRESS}:{AUTH_PORT}', check_service=True)
-    print(f'http://{AUTH_ADDRESS}:{AUTH_PORT}')
     service = ApiService(user_options.db_file, client, user_options.address, user_options.port)
     try:
         print(f'Starting service on: {service.base_uri}')

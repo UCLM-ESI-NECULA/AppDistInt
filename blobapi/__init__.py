@@ -14,6 +14,7 @@ BLOB_DB = os.getenv('BLOB_DB', 'blobs.json')
 
 HTTPS_DEBUG_MODE = False
 ADMIN = 'admin'
+CONTENT_JSON = {'Content-Type': 'application/json'}
 
 ADMIN_TOKEN = 'admin-token'
 USER_TOKEN = 'user-token'
