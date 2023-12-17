@@ -31,6 +31,7 @@ All the endpoints are documented with swagger, and can be accessed in the url: h
 
 ## Description
 In the second part of the project, I created the Dockerfile to create the image of the service
+
 There are 4 scripts: build.sh, run.sh, stop.sh and run_tests.sh
 
 ## IMPORTANT
